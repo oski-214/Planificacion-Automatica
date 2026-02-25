@@ -20,8 +20,6 @@
         (box-has box1 comida)
         (box-has box2 comida)
         (box-has box3 medicina)
-        (need person1 comida)
-        (need person2 medicina)
         (free derecha)
         (free izquierda)
     )

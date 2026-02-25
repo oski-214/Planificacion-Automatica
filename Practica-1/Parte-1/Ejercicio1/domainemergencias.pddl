@@ -14,8 +14,6 @@
         
         (free ?g - grip)
         (carrying ?d - dron ?g - grip ?b - box)
-
-        (need ?p - person ?c - bcontent)
     )
 
 
@@ -33,7 +31,7 @@
 
     (:action leave
         :parameters (?box - box ?location - location ?gripper - grip ?dron - dron ?person - person ?content - bcontent)
-        :precondition (and (at-dron ?dron ?location)(carrying ?dron ?gripper ?box)(at-person ?person ?location)(box-has ?box ?content)(need ?person ?content))
-        :effect (and (at-box ?box ?location)(free ?gripper)(not(carrying ?dron ?gripper ?box))(person-has ?person ?content)(not(need ?person ?content)))
+        :precondition (and (at-dron ?dron ?location)(carrying ?dron ?gripper ?box)(at-person ?person ?location)(box-has ?box ?content))
+        :effect (and (at-box ?box ?location)(free ?gripper)(not(carrying ?dron ?gripper ?box))(person-has ?person ?content))
     )
 )

@@ -15,7 +15,6 @@
         (at-box box1 deposito)
         (at-person person1 refugio)
         (box-has box1 comida)
-        (need person1 comida)
         (free derecha)
         (free izquierda)
     )
