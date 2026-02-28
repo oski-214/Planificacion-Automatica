@@ -1,3 +1,0 @@
-(pick box1 deposito izquierda dron1)
-(move deposito refugio1 dron1)
-(leave box1 refugio1 izquierda dron1 person1 comida)

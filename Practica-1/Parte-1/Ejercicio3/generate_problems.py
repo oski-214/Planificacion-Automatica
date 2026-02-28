@@ -1,100 +1,241 @@
 #!/usr/bin/env python3
-"""
-Generador de problemas PDDL de tamaño creciente para el dominio de emergencias.
 
-Cada problema de tamaño N tiene:
-  - 1 dron con 2 grippers (izquierda, derecha)
-  - N personas, cada una en un refugio distinto
-  - N cajas, cada una con un contenido necesario por una persona
-  - N+1 ubicaciones: 1 deposito + N refugios
-  - 2 tipos de contenido: comida, medicina (se asignan cíclicamente)
+########################################################################################
+# Problem instance generator for emergencies drones domain.
+# Based on the Linköping University TDDD48 2021 course.
+# https://www.ida.liu.se/~TDDD48/labs/2021/lab1/index.en.shtml
+#
+# Genera problemas de tamaño creciente para benchmark de algoritmos BFS, IDS, A*, GBFS
+########################################################################################
 
-Esto genera problemas que requieren ~ 3*N acciones (pick, move, leave por persona).
-"""
-
+import random
+import math
 import os
+import sys
 
-CONTENTS = ["comida", "medicina"]
+########################################################################################
+# Configuración
+########################################################################################
 
-def generate_problem(n, output_dir="."):
-    """Genera un problema de tamaño n."""
+# Directorio donde se guardarán los problemas
+PROBLEMS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "problems")
+
+# Tipos de contenido disponibles
+CONTENT_TYPES = ["comida", "medicina"]
+
+# Rango de tamaños a generar (de MIN_SIZE a MAX_SIZE inclusive)
+MIN_SIZE = 1
+MAX_SIZE = 30
+
+# Semilla para reproducibilidad (cambiar para obtener instancias diferentes)
+RANDOM_SEED = 42
+
+########################################################################################
+# Helper functions
+########################################################################################
+
+def setup_content_types(num_crates, num_persons, num_goals, verbose=False):
+    """
+    Distribuye las cajas entre los tipos de contenido y asigna contenido a cada caja.
+    Retorna una lista de listas: crates_with_contents[content_index] = [box_names]
+    """
+    # Limitamos los tipos de contenido a usar según el número de cajas
+    num_content_types = min(len(CONTENT_TYPES), num_crates)
     
-    # Objetos
-    drones = ["dron1"]
-    grippers = ["izquierda", "derecha"]
-    persons = [f"person{i}" for i in range(1, n + 1)]
-    boxes = [f"box{i}" for i in range(1, n + 1)]
-    locations = ["deposito"] + [f"refugio{i}" for i in range(1, n + 1)]
-    contents = CONTENTS  # se reutilizan cíclicamente
+    max_attempts = 100
+    for _ in range(max_attempts):
+        num_crates_with_contents = []
+        crates_left = num_crates
+        
+        for x in range(num_content_types - 1):
+            types_after_this = num_content_types - x - 1
+            max_now = crates_left - types_after_this
+            if max_now < 1:
+                max_now = 1
+            num = random.randint(1, max_now)
+            num_crates_with_contents.append(num)
+            crates_left -= num
+        num_crates_with_contents.append(max(1, crates_left))
+        
+        # Añadir 0 cajas para los tipos de contenido no usados
+        while len(num_crates_with_contents) < len(CONTENT_TYPES):
+            num_crates_with_contents.append(0)
+
+        # Verificar que se pueden satisfacer los goals y que no excedemos num_crates
+        total_crates = sum(num_crates_with_contents)
+        maxgoals = sum(min(num_crates_type, num_persons) for num_crates_type in num_crates_with_contents)
+        if num_goals <= maxgoals and total_crates == num_crates:
+            break
+
+    if verbose:
+        print("  Tipos\tCantidades")
+        for x in range(len(num_crates_with_contents)):
+            if num_crates_with_contents[x] > 0:
+                print(f"  {CONTENT_TYPES[x]}\t {num_crates_with_contents[x]}")
+
+    # Crear lista de cajas con su contenido
+    crates_with_contents = []
+    counter = 1
+    for x in range(len(CONTENT_TYPES)):
+        crates = []
+        for y in range(num_crates_with_contents[x]):
+            crates.append("box" + str(counter))
+            counter += 1
+        crates_with_contents.append(crates)
+
+    return crates_with_contents
+
+def setup_person_needs(num_persons, num_goals, crates_with_contents):
+    """
+    Asigna necesidades a las personas de forma aleatoria.
+    Retorna una matriz need[person_index][content_index] = True/False
+    """
+    need = [[False for _ in range(len(CONTENT_TYPES))] for _ in range(num_persons)]
+    goals_per_contents = [0 for _ in range(len(CONTENT_TYPES))]
+
+    goals_generated = 0
+    max_attempts = num_goals * 100  # Evitar bucle infinito
     
-    # Asignación: persona_i necesita contenido[i % len], box_i tiene ese contenido
-    assignments = []
-    for i in range(n):
-        content = contents[i % len(contents)]
-        assignments.append((persons[i], boxes[i], locations[i + 1], content))
+    for _ in range(max_attempts):
+        if goals_generated >= num_goals:
+            break
+            
+        rand_person = random.randint(0, num_persons - 1)
+        rand_content = random.randint(0, len(CONTENT_TYPES) - 1)
+        
+        if (goals_per_contents[rand_content] < len(crates_with_contents[rand_content])
+                and not need[rand_person][rand_content]):
+            need[rand_person][rand_content] = True
+            goals_per_contents[rand_content] += 1
+            goals_generated += 1
     
-    lines = []
-    lines.append(f"(define (problem emergencias-size{n})")
-    lines.append(f"    (:domain emergencias)")
-    lines.append(f"")
-    lines.append(f"    (:objects")
-    lines.append(f"        {' '.join(drones)} - dron")
-    lines.append(f"        {' '.join(persons)} - person")
-    lines.append(f"        {' '.join(boxes)} - box")
-    lines.append(f"        {' '.join(contents)} - bcontent")
-    lines.append(f"        {' '.join(locations)} - location")
-    lines.append(f"        {' '.join(grippers)} - grip")
-    lines.append(f"    )")
-    lines.append(f"")
-    lines.append(f"    (:init")
-    
-    # Dron en deposito
-    lines.append(f"        (at-dron dron1 deposito)")
-    
-    # Cajas en deposito
-    for box in boxes:
-        lines.append(f"        (at-box {box} deposito)")
-    
-    # Personas en refugios
-    for person, box, refugio, content in assignments:
-        lines.append(f"        (at-person {person} {refugio})")
-    
-    # Contenido de las cajas
-    for person, box, refugio, content in assignments:
-        lines.append(f"        (box-has {box} {content})")
-    
-    # Necesidades de las personas
-    for person, box, refugio, content in assignments:
-        lines.append(f"        (need {person} {content})")
-    
-    # Grippers libres
-    for g in grippers:
-        lines.append(f"        (free {g})")
-    
-    lines.append(f"    )")
-    lines.append(f"")
-    lines.append(f"    (:goal (and")
-    for person, box, refugio, content in assignments:
-        lines.append(f"        (person-has {person} {content})")
-    lines.append(f"    ))")
-    lines.append(f")")
-    
-    filename = os.path.join(output_dir, f"problem_size{n}.pddl")
-    with open(filename, "w") as f:
-        f.write("\n".join(lines) + "\n")
-    
-    print(f"Generado: {filename}  ({n} personas, {n} cajas, {n+1} ubicaciones)")
-    return filename
+    return need
 
 
-if __name__ == "__main__":
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "problems")
-    os.makedirs(output_dir, exist_ok=True)
+def generate_problem(size, output_dir, verbose=False):
+    """
+    Genera un problema PDDL de tamaño 'size'.
+    El tamaño determina: locations, persons, crates, y goals.
+    """
+    # Configuración del problema basada en el tamaño
+    num_drones = 1
+    num_locations = size
+    num_persons = size
+    num_crates = size
+    num_goals = size  # Cada persona necesita algo
+
+    if verbose:
+        print(f"\nGenerando problema size={size}:")
+        print(f"  Drones: {num_drones}, Locations: {num_locations}, Persons: {num_persons}, Crates: {num_crates}, Goals: {num_goals}")
+
+    # Crear listas de objetos
+    drones = [f"dron{x+1}" for x in range(num_drones)]
+    grips = []
+    for d in drones:
+        grips.append(f"{d}-izq")
+        grips.append(f"{d}-der")
     
-    # Generar problemas de tamaño 1 a 30
-    sizes = list(range(1, 31))
+    locations = ["deposito"] + [f"refugio{x+1}" for x in range(num_locations)]
+    persons = [f"person{x+1}" for x in range(num_persons)]
+    crates = [f"box{x+1}" for x in range(num_crates)]
+
+    # Distribuir contenidos
+    crates_with_contents = setup_content_types(num_crates, num_persons, num_goals, verbose)
     
-    for size in sizes:
-        generate_problem(size, output_dir)
+    # Asignar necesidades
+    need = setup_person_needs(num_persons, num_goals, crates_with_contents)
+
+    # Nombre del archivo
+    problem_name = f"problem_size{size}"
+    filepath = os.path.join(output_dir, f"{problem_name}.pddl")
+
+    with open(filepath, 'w') as f:
+        f.write(f"(define (problem {problem_name})\n")
+        f.write("(:domain emergencias)\n")
+        f.write("(:objects\n")
+
+        # Objetos
+        f.write("\t" + " ".join(drones) + " - dron\n")
+        f.write("\t" + " ".join(locations) + " - location\n")
+        f.write("\t" + " ".join(crates) + " - box\n")
+        f.write("\t" + " ".join(CONTENT_TYPES) + " - bcontent\n")
+        f.write("\t" + " ".join(persons) + " - person\n")
+        f.write("\t" + " ".join(grips) + " - grip\n")
+        f.write(")\n\n")
+
+        # Estado inicial
+        f.write("(:init\n")
+
+        # Drones en el deposito
+        for d in drones:
+            f.write(f"\t(at-dron {d} deposito)\n")
+
+        # Brazos libres
+        for g in grips:
+            f.write(f"\t(free {g})\n")
+
+        # Cajas en deposito y su contenido
+        for content_index, crate_list in enumerate(crates_with_contents):
+            for c in crate_list:
+                f.write(f"\t(at-box {c} deposito)\n")
+                f.write(f"\t(box-has {c} {CONTENT_TYPES[content_index]})\n")
+
+        # Personas en localizaciones aleatorias (no en deposito)
+        for p in persons:
+            rand_loc = random.choice(locations[1:])  # Omite el deposito
+            f.write(f"\t(at-person {p} {rand_loc})\n")
+
+        f.write(")\n\n")
+
+        # Metas: necesidades satisfechas
+        f.write("(:goal (and\n")
+        for person_idx in range(num_persons):
+            for content_idx in range(len(CONTENT_TYPES)):
+                if need[person_idx][content_idx]:
+                    f.write(f"\t(person-has {persons[person_idx]} {CONTENT_TYPES[content_idx]})\n")
+
+        f.write("))\n")
+        f.write(")\n")
+
+    return filepath
+
+
+########################################################################################
+# Main program
+########################################################################################
+
+def main():
+    # Establecer semilla para reproducibilidad
+    random.seed(RANDOM_SEED)
     
-    print(f"\n✅ Generados {len(sizes)} problemas en {output_dir}")
+    # Crear directorio de problemas si no existe
+    os.makedirs(PROBLEMS_DIR, exist_ok=True)
+    
+    print("=" * 60)
+    print("Generador de Problemas para Benchmark")
+    print("=" * 60)
+    print(f"Directorio de salida: {PROBLEMS_DIR}")
+    print(f"Rango de tamaños: {MIN_SIZE} a {MAX_SIZE}")
+    print(f"Semilla aleatoria: {RANDOM_SEED}")
+    print("=" * 60)
+    
+    generated_files = []
+    
+    for size in range(MIN_SIZE, MAX_SIZE + 1):
+        filepath = generate_problem(size, PROBLEMS_DIR, verbose=True)
+        generated_files.append(filepath)
+    
+    print("\n" + "=" * 60)
+    print(f"✅ Generados {len(generated_files)} problemas en {PROBLEMS_DIR}/")
+    print("=" * 60)
+    print("\nArchivos generados:")
+    for f in generated_files[:5]:
+        print(f"  - {os.path.basename(f)}")
+    if len(generated_files) > 5:
+        print(f"  ... y {len(generated_files) - 5} más")
+    
+    print(f"\nListo para ejecutar: python3 benchmark.py")
+
+
+if __name__ == '__main__':
+    main()

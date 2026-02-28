@@ -94,20 +94,17 @@ def setup_person_needs(options, crates_with_contents):
 ########################################################################################
 
 def main():
-    parser = OptionParser(usage='python generate-problem.py [-help] options...')
-    parser.add_option('-d', '--drones', metavar='NUM', dest='drones', action='store', type=int, help='the number of drones')
-    parser.add_option('-r', '--carriers', metavar='NUM', type=int, dest='carriers', default=0, help='the number of carriers')
-    parser.add_option('-l', '--locations', metavar='NUM', type=int, dest='locations', help='the number of locations')
-    parser.add_option('-p', '--persons', metavar='NUM', type=int, dest='persons', help='the number of persons')
-    parser.add_option('-c', '--crates', metavar='NUM', type=int, dest='crates', help='the number of crates')
-    parser.add_option('-g', '--goals', metavar='NUM', type=int, dest='goals', help='the number of goals')
+    n = int(input("Introduce un número para definir locations, persons, crates y goals: "))
 
-    (options, args) = parser.parse_args()
-
-    # Validaciones omitidas por brevedad (se mantienen igual que en tu original)
-    if None in [options.drones, options.locations, options.persons, options.crates, options.goals]:
-        print("Faltan argumentos. Usa --help")
-        sys.exit(1)
+    # Valores fijos
+    options = type('Options', (), {
+        'drones': 1,
+        'carriers': 0,
+        'locations': n,
+        'persons': n,
+        'crates': n,
+        'goals': n
+    })()
 
     print(f"Drones:\t\t{options.drones}")
     print(f"Locations:\t{options.locations}")
@@ -118,9 +115,9 @@ def main():
     # Inicializar listas
     drone, person, crate, location, grip = [], [], [], [], []
 
-    location.append("deposito") # Adaptado
+    location.append("deposito") # Donde salen las cajas
     for x in range(options.locations):
-        location.append("loc" + str(x + 1))
+        location.append("refugio" + str(x + 1)) # Donde están las personas
     for x in range(options.drones):
         drone_name = "dron" + str(x + 1)
         drone.append(drone_name)
@@ -176,12 +173,6 @@ def main():
         for p in person:
             rand_loc = random.choice(location[1:]) # Omite el deposito
             f.write(f"\t(at-person {p} {rand_loc})\n")
-
-        # Necesidades iniciales
-        for x in range(options.persons):
-            for y in range(len(content_types)):
-                if need[x][y]:
-                    f.write(f"\t(need {person[x]} {content_types[y]})\n")
 
         f.write(")\n\n")
 

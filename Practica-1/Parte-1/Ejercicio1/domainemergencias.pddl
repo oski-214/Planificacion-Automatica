@@ -1,4 +1,4 @@
-(define (domain <emergencias>)
+(define (domain emergencias)
     (:requirements :strips :typing)
     (:types
         location box bcontent grip person dron - object
