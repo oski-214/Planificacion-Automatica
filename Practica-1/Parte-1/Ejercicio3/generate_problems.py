@@ -27,8 +27,7 @@ CONTENT_TYPES = ["comida", "medicina"]
 MIN_SIZE = 1
 MAX_SIZE = 30
 
-# Semilla para reproducibilidad (cambiar para obtener instancias diferentes)
-RANDOM_SEED = 42
+# Semilla eliminada - ahora los resultados serán diferentes en cada ejecución
 
 ########################################################################################
 # Helper functions
@@ -36,35 +35,21 @@ RANDOM_SEED = 42
 
 def setup_content_types(num_crates, num_persons, num_goals, verbose=False):
     """
-    Distribuye las cajas entre los tipos de contenido y asigna contenido a cada caja.
+    Distribuye las cajas entre los tipos de contenido de forma ALEATORIA.
     Retorna una lista de listas: crates_with_contents[content_index] = [box_names]
     """
-    # Limitamos los tipos de contenido a usar según el número de cajas
-    num_content_types = min(len(CONTENT_TYPES), num_crates)
-    
     max_attempts = 100
     for _ in range(max_attempts):
-        num_crates_with_contents = []
-        crates_left = num_crates
+        num_crates_with_contents = [0 for _ in CONTENT_TYPES]
         
-        for x in range(num_content_types - 1):
-            types_after_this = num_content_types - x - 1
-            max_now = crates_left - types_after_this
-            if max_now < 1:
-                max_now = 1
-            num = random.randint(1, max_now)
-            num_crates_with_contents.append(num)
-            crates_left -= num
-        num_crates_with_contents.append(max(1, crates_left))
-        
-        # Añadir 0 cajas para los tipos de contenido no usados
-        while len(num_crates_with_contents) < len(CONTENT_TYPES):
-            num_crates_with_contents.append(0)
+        # Asignar cada caja a un tipo de contenido aleatorio
+        for _ in range(num_crates):
+            rand_type = random.randint(0, len(CONTENT_TYPES) - 1)
+            num_crates_with_contents[rand_type] += 1
 
-        # Verificar que se pueden satisfacer los goals y que no excedemos num_crates
-        total_crates = sum(num_crates_with_contents)
+        # Verificar que se pueden satisfacer los goals
         maxgoals = sum(min(num_crates_type, num_persons) for num_crates_type in num_crates_with_contents)
-        if num_goals <= maxgoals and total_crates == num_crates:
+        if num_goals <= maxgoals:
             break
 
     if verbose:
@@ -205,9 +190,6 @@ def generate_problem(size, output_dir, verbose=False):
 ########################################################################################
 
 def main():
-    # Establecer semilla para reproducibilidad
-    random.seed(RANDOM_SEED)
-    
     # Crear directorio de problemas si no existe
     os.makedirs(PROBLEMS_DIR, exist_ok=True)
     
@@ -216,7 +198,6 @@ def main():
     print("=" * 60)
     print(f"Directorio de salida: {PROBLEMS_DIR}")
     print(f"Rango de tamaños: {MIN_SIZE} a {MAX_SIZE}")
-    print(f"Semilla aleatoria: {RANDOM_SEED}")
     print("=" * 60)
     
     generated_files = []

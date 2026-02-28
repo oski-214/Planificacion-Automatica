@@ -35,15 +35,12 @@ def flight_cost(location_coords, location_num1, location_num2):
 
 def setup_content_types(options):
     while True:
-        num_crates_with_contents = []
-        crates_left = options.crates
-        for x in range(len(content_types) - 1):
-            types_after_this = len(content_types) - x - 1
-            max_now = crates_left - types_after_this
-            num = random.randint(1, max_now)
-            num_crates_with_contents.append(num)
-            crates_left -= num
-        num_crates_with_contents.append(crates_left)
+        num_crates_with_contents = [0 for _ in content_types]
+        
+        # Asignar cada caja a un tipo de contenido aleatorio
+        for _ in range(options.crates):
+            rand_type = random.randint(0, len(content_types) - 1)
+            num_crates_with_contents[rand_type] += 1
 
         maxgoals = sum(min(num_crates, options.persons) for num_crates in num_crates_with_contents)
 
@@ -60,7 +57,7 @@ def setup_content_types(options):
     for x in range(len(content_types)):
         crates = []
         for y in range(num_crates_with_contents[x]):
-            crates.append("box" + str(counter)) # Adaptado a 'box'
+            crates.append("box" + str(counter))
             counter += 1
         crates_with_contents.append(crates)
 
