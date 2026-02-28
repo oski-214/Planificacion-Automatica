@@ -27,7 +27,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOMAIN = os.path.join(BASE_DIR, "domainemergencias.pddl")
 PROBLEMS_DIR = os.path.join(BASE_DIR, "problems_benchmark")
 PLANUTILS_VENV = "/home/oscar/planutils-venv/bin/activate"
-TIMEOUT = 2  # segundos (1 minuto)
+TIMEOUT = 60  # segundos (1 minuto)
 START_SIZE = 1  # Tamaño mínimo (el generador falla con 1)
 MAX_SIZE = 500  # Límite superior para evitar bucle infinito
 
