@@ -13,9 +13,6 @@
         (box-has ?b - box ?c - bcontent)
         (person-has ?p - person ?c - bcontent)
         
-        ;; EL PREDICADO QUE FALTABA
-        (need ?p - person ?c - bcontent)
-        
         ;; El dron ahora tiene un único brazo implícito
         (free ?d - dron)
         (carrying ?d - dron ?b - box)
@@ -48,11 +45,11 @@
         :effect (and (not (at-box ?box ?location)) (not (free ?dron)) (carrying ?dron ?box))
     )
 
-    ;; Entrega una caja a una persona (Actualizada con NEED)
+    ;; Entrega una caja a una persona
     (:action leave
         :parameters (?box - box ?location - location ?dron - dron ?person - person ?content - bcontent)
-        :precondition (and (at-dron ?dron ?location) (carrying ?dron ?box) (at-person ?person ?location) (box-has ?box ?content) (need ?person ?content))
-        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) (person-has ?person ?content) (not (need ?person ?content)))
+        :precondition (and (at-dron ?dron ?location) (carrying ?dron ?box) (at-person ?person ?location) (box-has ?box ?content))
+        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) (person-has ?person ?content))
     )
 
     ;; Mete una caja en el transportador (Suma 1)
