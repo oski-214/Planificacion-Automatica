@@ -8,7 +8,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOMAIN = os.path.join(BASE_DIR, "domainemergencias.pddl")
 PROBLEMS_DIR = os.path.join(BASE_DIR, "problems")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
-TIMEOUT = 60  
+TIMEOUT = 60
 SUMMARY_FILE = os.path.join(RESULTS_DIR, "summary.txt")
 PYPERPLAN= "pyperplan"
 #PYPERPLAN = os.path.expanduser("~/planutils-venv/bin/pyperplan")
@@ -137,8 +137,6 @@ def parte3(sizes, astar_max):
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     sizes = list(range(1, 31))
-    
-    subprocess.run([sys.executable, os.path.join(BASE_DIR, "generate_problems.py")])
 
     print("Calculando topes máximos")
     gbfs_max = find_max_solvable(DOMAIN, sizes, "gbf", "hmax")
