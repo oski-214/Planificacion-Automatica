@@ -31,14 +31,14 @@
     ;; Mueve solo al dron
     (:action move
         :parameters (?from - location ?to - location ?dron - dron)
-        :precondition (at-dron ?dron ?from)
+        :precondition (and (at-dron ?dron ?from) (free ?dron))
         :effect (and (at-dron ?dron ?to) (not (at-dron ?dron ?from))(increase (total-cost) (fly-cost ?from ?to)))
     )
 
     ;; Mueve al dron llevándose el transportador consigo
     (:action move-carrier
         :parameters (?from - location ?to - location ?dron - dron ?carrier - carrier)
-        :precondition (and (at-dron ?dron ?from) (at-carrier ?carrier ?from))
+        :precondition (and (at-dron ?dron ?from) (at-carrier ?carrier ?from) (free ?dron))
         :effect (and (at-dron ?dron ?to) (not (at-dron ?dron ?from)) 
                      (at-carrier ?carrier ?to) (not (at-carrier ?carrier ?from))(increase (total-cost) (fly-cost ?from ?to)))
     )
@@ -54,7 +54,7 @@
     (:action leave
         :parameters (?box - box ?location - location ?dron - dron ?person - person ?content - bcontent)
         :precondition (and (at-dron ?dron ?location) (carrying ?dron ?box) (at-person ?person ?location) (box-has ?box ?content))
-        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) (person-has ?person ?content)(increase (total-cost) 1))
+        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) (person-has ?person ?content) (not (box-has ?box ?content)) (increase (total-cost) 1))
     )
 
     ;; Mete una caja en el transportador (Suma 1)
