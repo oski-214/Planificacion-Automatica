@@ -28,7 +28,7 @@
 )
 
 (:goal (and
-	(person-has person1 comida)
-	(person-has person2 medicina)
+	(person-has person1 medicina)
+	(person-has person2 comida)
 ))
 )
