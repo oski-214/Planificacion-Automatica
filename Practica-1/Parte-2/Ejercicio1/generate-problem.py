@@ -143,12 +143,6 @@ def main():
             rand_loc = random.choice(location[1:]) 
             f.write(f"\t(at-person {p} {rand_loc})\n")
 
-        # 6. Necesidades
-        for x in range(options.persons):
-            for y in range(len(content_types)):
-                if need[x][y]:
-                    f.write(f"\t(need {person[x]} {content_types[y]})\n")
-
         f.write(")\n\n")
 
         f.write("(:goal (and\n")

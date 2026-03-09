@@ -29,9 +29,10 @@
         :effect (and (not (at-box ?box ?location))(not (free ?gripper))(carrying ?dron ?gripper ?box))
     )
 
-    (:action leave
+(:action leave
         :parameters (?box - box ?location - location ?gripper - grip ?dron - dron ?person - person ?content - bcontent)
         :precondition (and (at-dron ?dron ?location)(carrying ?dron ?gripper ?box)(at-person ?person ?location)(box-has ?box ?content))
-        :effect (and (at-box ?box ?location)(free ?gripper)(not(carrying ?dron ?gripper ?box))(person-has ?person ?content))
+        :effect (and (at-box ?box ?location)(free ?gripper)(not(carrying ?dron ?gripper ?box))(person-has ?person ?content)(not(box-has ?box ?content)))
     )
+
 )

@@ -23,17 +23,17 @@
         (siguiente ?n1 - num ?n2 - num)
     )
 
-    ;; Mueve solo al dron
+    ;; Mueve solo al dron (debe tener el brazo libre)
     (:action move
         :parameters (?from - location ?to - location ?dron - dron)
-        :precondition (at-dron ?dron ?from)
+        :precondition (and (at-dron ?dron ?from) (free ?dron))
         :effect (and (at-dron ?dron ?to) (not (at-dron ?dron ?from)))
     )
 
-    ;; Mueve al dron llevándose el transportador consigo
+    ;; Mueve al dron llevándose el transportador consigo (debe tener el brazo libre)
     (:action move-carrier
         :parameters (?from - location ?to - location ?dron - dron ?carrier - carrier)
-        :precondition (and (at-dron ?dron ?from) (at-carrier ?carrier ?from))
+        :precondition (and (at-dron ?dron ?from) (at-carrier ?carrier ?from) (free ?dron))
         :effect (and (at-dron ?dron ?to) (not (at-dron ?dron ?from)) 
                      (at-carrier ?carrier ?to) (not (at-carrier ?carrier ?from)))
     )
@@ -45,11 +45,12 @@
         :effect (and (not (at-box ?box ?location)) (not (free ?dron)) (carrying ?dron ?box))
     )
 
-    ;; Entrega una caja a una persona
+    ;; Entrega una caja a una persona (el dron debe llevarla en el brazo)
     (:action leave
         :parameters (?box - box ?location - location ?dron - dron ?person - person ?content - bcontent)
         :precondition (and (at-dron ?dron ?location) (carrying ?dron ?box) (at-person ?person ?location) (box-has ?box ?content))
-        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) (person-has ?person ?content))
+        :effect (and (at-box ?box ?location) (free ?dron) (not (carrying ?dron ?box)) 
+                     (person-has ?person ?content) (not (box-has ?box ?content)))
     )
 
     ;; Mete una caja en el transportador (Suma 1)

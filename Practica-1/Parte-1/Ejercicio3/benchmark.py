@@ -42,7 +42,7 @@ TIMEOUT = 60  # segundos
 SUMMARY_FILE = os.path.join(RESULTS_DIR, "summary.txt")
 
 # Ruta a pyperplan (puede estar en ~/.local/bin)
-PYPERPLAN = os.path.expanduser("~/.local/bin/pyperplan")
+PYPERPLAN = os.path.expanduser("~/planutils-venv/bin/pyperplan")
 
 # Buffer para el resumen
 summary_lines = []
