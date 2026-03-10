@@ -1,0 +1,16 @@
+BENCHMARK PDDL - 2026-03-10 15:35:16
+
+--- EJERCICIO 9: SATISFACCIÓN ---
+Alias                     | Size  | Coste     
+---------------------------------------------
+metric-ff                 | 11    | 250       
+lama-first                | 30    | 709       
+seq-sat-fdss-2            | 29    | 485       
+seq-sat-fd-autotune-2     | 7     | 131       
+
+--- EJERCICIO 10: ÓPTIMOS ---
+Alias                     | Size  | Coste     
+---------------------------------------------
+seq-opt-lmcut             | 5     | 42        
+seq-opt-bjolp             | 6     | 49        
+seq-opt-fdss-2            | 5     | 42        
