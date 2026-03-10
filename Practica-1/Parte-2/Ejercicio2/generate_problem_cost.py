@@ -1,136 +1,105 @@
 #!/usr/bin/env python3
 
 import random
-import sys
 import os
 
-# CONFIGURACIÓN DE ARGUMENTOS DIRECTOS
-NUM_DRONES = 1
-NUM_CARRIERS = 1
-NUM_LOCATIONS = 4   # Cantidad de refugios (sin contar el depósito)
-NUM_PERSONS = 4
-NUM_CRATES = 8
-NUM_GOALS = 4       # Debe ser <= NUM_CRATES
+PROBLEMS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "problems2")
+CONTENT_TYPES = ["comida", "medicina"]
 CARRIER_CAPACITY = 4
+MIN_SIZE = 1
+MAX_SIZE = 30
 
-# Tipos de contenido
-content_types = ["comida", "medicina"]
-
-def setup_content_types(crates, persons, goals):
-    if goals > crates:
-        print(f"Error: Objetivos ({goals}) > Cajas ({crates}).")
-        sys.exit(1)
-
-    while True:
-        num_crates_with_contents = [0 for _ in content_types]
-        for _ in range(crates):
-            rand_type = random.randint(0, len(content_types) - 1)
-            num_crates_with_contents[rand_type] += 1
-
-        # Verificamos que la suma de cajas por tipo cubra los objetivos
-        maxgoals = sum(min(nc, persons) for nc in num_crates_with_contents)
-        if goals <= maxgoals:
-            break
-
+def setup_content_types(num_crates, num_persons, num_goals):
+    num_crates_with_contents = [0 for _ in CONTENT_TYPES]
+    for _ in range(num_crates):
+        num_crates_with_contents[random.randint(0, len(CONTENT_TYPES) - 1)] += 1
+    
     crates_with_contents = []
     counter = 1
-    for x in range(len(content_types)):
-        crates_list = []
-        for y in range(num_crates_with_contents[x]):
-            crates_list.append("box" + str(counter))
+    for x in range(len(CONTENT_TYPES)):
+        crates = []
+        for _ in range(num_crates_with_contents[x]):
+            crates.append("box" + str(counter))
             counter += 1
-        crates_with_contents.append(crates_list)
+        crates_with_contents.append(crates)
     return crates_with_contents
 
-def setup_person_needs(persons, goals, crates_with_contents):
-    need = [[False for i in range(len(content_types))] for j in range(persons)]
-    goals_per_contents = [0 for i in range(len(content_types))]
+def setup_person_needs(num_persons, num_goals, crates_with_contents):
+    need = [[False for _ in range(len(CONTENT_TYPES))] for _ in range(num_persons)]
+    goals_per_contents = [0 for _ in range(len(CONTENT_TYPES))]
+    possible_goals = [(p, c) for p in range(num_persons) for c in range(len(CONTENT_TYPES))]
+    random.shuffle(possible_goals)
 
-    for goalnum in range(goals):
-        generated = False
-        attempts = 0
-        while not generated and attempts < 100:
-            rand_person = random.randint(0, persons - 1)
-            rand_content = random.randint(0, len(content_types) - 1)
-            
-            if (goals_per_contents[rand_content] < len(crates_with_contents[rand_content])
-                    and not need[rand_person][rand_content]):
-                need[rand_person][rand_content] = True
-                goals_per_contents[rand_content] += 1
-                generated = True
-            attempts += 1
+    goals_generated = 0
+    for p, c in possible_goals:
+        if goals_generated >= num_goals: break
+        if goals_per_contents[c] < len(crates_with_contents[c]):
+            need[p][c] = True
+            goals_per_contents[c] += 1
+            goals_generated += 1
     return need
 
-def main():
-    # Crear la carpeta problems2 si no existe
-    target_dir = "problems2"
-    if not os.path.exists(target_dir):
-        os.makedirs(target_dir)
+def generate_problem(size, output_dir):
+    num_locations = num_persons = num_crates = num_goals = size
+    drones = ["dron1"]
+    carriers = ["carrier1"]
+    locations = ["deposito"] + [f"refugio{x+1}" for x in range(num_locations)]
+    persons = [f"person{x+1}" for x in range(num_persons)]
+    crates = [f"box{x+1}" for x in range(num_crates)]
+    nums = [f"n{x}" for x in range(CARRIER_CAPACITY + 1)]
 
-    # Inicializar listas de objetos
-    location = ["deposito"] + [f"refugio{x+1}" for x in range(NUM_LOCATIONS)]
-    drone = [f"dron{x+1}" for x in range(NUM_DRONES)]
-    carrier = [f"carrier{x+1}" for x in range(NUM_CARRIERS)]
-    person = [f"person{x+1}" for x in range(NUM_PERSONS)]
-    num = [f"n{x}" for x in range(CARRIER_CAPACITY + 1)]
+    crates_with_contents = setup_content_types(num_crates, num_persons, num_goals)
+    need = setup_person_needs(num_persons, num_goals, crates_with_contents)
 
-    crates_with_contents = setup_content_types(NUM_CRATES, NUM_PERSONS, NUM_GOALS)
-    all_boxes = [box for sublist in crates_with_contents for box in sublist]
-    need = setup_person_needs(NUM_PERSONS, NUM_GOALS, crates_with_contents)
+    problem_name = f"problem_size{size}"
+    filepath = os.path.join(output_dir, f"{problem_name}.pddl")
 
-    problem_name = f"prob_l{NUM_LOCATIONS}_p{NUM_PERSONS}_c{NUM_CRATES}"
-    file_path = os.path.join(target_dir, problem_name + ".pddl")
+    with open(filepath, 'w') as f:
+        f.write(f"(define (problem {problem_name})\n(:domain emergencias-costs)\n(:objects\n")
+        f.write("\t" + " ".join(drones) + " - dron\n\t" + " ".join(locations) + " - location\n")
+        f.write("\t" + " ".join(crates) + " - box\n\t" + " ".join(CONTENT_TYPES) + " - bcontent\n")
+        f.write("\t" + " ".join(persons) + " - person\n\t" + " ".join(carriers) + " - carrier\n")
+        f.write("\t" + " ".join(nums) + " - num\n)\n\n(:init\n")
 
-    with open(file_path, 'w') as f:
-        f.write(f"(define (problem {problem_name})\n")
-        f.write("(:domain emergencias-costs)\n")
-        f.write("(:objects\n")
-        f.write(f"\t{' '.join(drone)} - dron\n")
-        f.write(f"\t{' '.join(location)} - location\n")
-        f.write(f"\t{' '.join(all_boxes)} - box\n")
-        f.write(f"\t{' '.join(content_types)} - bcontent\n")
-        f.write(f"\t{' '.join(person)} - person\n")
-        f.write(f"\t{' '.join(carrier)} - carrier\n")
-        f.write(f"\t{' '.join(num)} - num\n")
-        f.write(")\n\n(:init\n")
-        
-        # 1. Costes iniciales y métrica (Ejercicio 2.2) [cite: 75, 76, 79, 80]
+        # --- Costes y Funciones ---
         f.write("\t(= (total-cost) 0)\n")
-        for l1 in location:
-            for l2 in location:
+        for l1 in locations:
+            for l2 in locations:
                 if l1 != l2:
-                    # Simulamos flight_cost() con valores entre 1 y 20 [cite: 84]
-                    f.write(f"\t(= (fly-cost {l1} {l2}) {random.randint(1, 20)})\n")
+                    cost = random.randint(1, 20)
+                    f.write(f"\t(= (fly-cost {l1} {l2}) {cost})\n")
 
-        # 2. Números para el transportador [cite: 33, 43, 44]
+        # --- Estado Inicial ---
         for x in range(CARRIER_CAPACITY):
             f.write(f"\t(siguiente n{x} n{x+1})\n")
 
-        # 3. Estado de drones y transportadores [cite: 15, 16]
-        for d in drone:
-            f.write(f"\t(at-dron {d} deposito)\n\t(free {d})\n")
-        for c in carrier:
-            f.write(f"\t(at-carrier {c} deposito)\n\t(boxes-in-carrier {c} n0)\n")
+        f.write(f"\t(at-dron dron1 deposito)\n\t(free dron1)\n")
+        f.write(f"\t(at-carrier carrier1 deposito)\n\t(boxes-in-carrier carrier1 n0)\n")
 
-        # 4. Cajas y Personas
-        for idx, crate_list in enumerate(crates_with_contents):
+        for content_idx, crate_list in enumerate(crates_with_contents):
             for b in crate_list:
-                f.write(f"\t(at-box {b} deposito)\n\t(box-has {b} {content_types[idx]})\n")
-        for p in person:
-            # Las personas se ubican en refugios, no en el depósito
-            f.write(f"\t(at-person {p} {random.choice(location[1:])})\n")
+                f.write(f"\t(at-box {b} deposito)\n\t(box-has {b} {CONTENT_TYPES[content_idx]})\n")
+
+        for p in persons:
+            f.write(f"\t(at-person {p} {random.choice(locations[1:])})\n")
 
         f.write(")\n\n(:goal (and\n")
-        for x in range(NUM_PERSONS):
-            for y in range(len(content_types)):
-                if need[x][y]:
-                    f.write(f"\t(person-has {person[x]} {content_types[y]})\n")
+        for p_idx in range(num_persons):
+            for c_idx in range(len(CONTENT_TYPES)):
+                if need[p_idx][c_idx]:
+                    f.write(f"\t(person-has {persons[p_idx]} {CONTENT_TYPES[c_idx]})\n")
         f.write("))\n")
         
-        # 5. Métrica de minimización [cite: 85]
-        f.write("(:metric minimize (total-cost))\n)\n")
+        # --- Métrica de Optimización ---
+        f.write("(:metric minimize (total-cost))\n)")
 
-    print(f"¡Hecho! Archivo guardado en: {file_path}")
+    return filepath
+
+def main():
+    os.makedirs(PROBLEMS_DIR, exist_ok=True)
+    for size in range(MIN_SIZE, MAX_SIZE + 1):
+        generate_problem(size, PROBLEMS_DIR)
+    print(f"✅ Generados problemas con costes en {PROBLEMS_DIR}/")
 
 if __name__ == '__main__':
     main()
