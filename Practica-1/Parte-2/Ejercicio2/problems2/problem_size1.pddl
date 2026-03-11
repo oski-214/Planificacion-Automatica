@@ -12,8 +12,8 @@
 
 (:init
 	(= (total-cost) 0)
-	(= (fly-cost deposito refugio1) 17)
-	(= (fly-cost refugio1 deposito) 5)
+	(= (fly-cost deposito refugio1) 19)
+	(= (fly-cost refugio1 deposito) 18)
 	(siguiente n0 n1)
 	(siguiente n1 n2)
 	(siguiente n2 n3)
@@ -23,12 +23,12 @@
 	(at-carrier carrier1 deposito)
 	(boxes-in-carrier carrier1 n0)
 	(at-box box1 deposito)
-	(box-has box1 comida)
+	(box-has box1 medicina)
 	(at-person person1 refugio1)
 )
 
 (:goal (and
-	(person-has person1 comida)
+	(person-has person1 medicina)
 ))
 (:metric minimize (total-cost))
 )

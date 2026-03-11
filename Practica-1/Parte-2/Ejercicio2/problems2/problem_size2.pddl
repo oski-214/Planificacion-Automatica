@@ -12,12 +12,12 @@
 
 (:init
 	(= (total-cost) 0)
-	(= (fly-cost deposito refugio1) 15)
-	(= (fly-cost deposito refugio2) 18)
-	(= (fly-cost refugio1 deposito) 7)
-	(= (fly-cost refugio1 refugio2) 4)
+	(= (fly-cost deposito refugio1) 11)
+	(= (fly-cost deposito refugio2) 4)
+	(= (fly-cost refugio1 deposito) 9)
+	(= (fly-cost refugio1 refugio2) 19)
 	(= (fly-cost refugio2 deposito) 16)
-	(= (fly-cost refugio2 refugio1) 11)
+	(= (fly-cost refugio2 refugio1) 6)
 	(siguiente n0 n1)
 	(siguiente n1 n2)
 	(siguiente n2 n3)
@@ -30,8 +30,8 @@
 	(box-has box1 comida)
 	(at-box box2 deposito)
 	(box-has box2 medicina)
-	(at-person person1 refugio1)
-	(at-person person2 refugio2)
+	(at-person person1 refugio2)
+	(at-person person2 refugio1)
 )
 
 (:goal (and
