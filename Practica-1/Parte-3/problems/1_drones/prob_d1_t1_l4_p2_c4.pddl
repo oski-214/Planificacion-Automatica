@@ -1,0 +1,63 @@
+(define (problem prob_d1_t1_l4_p2_c4)
+(:domain emergencias-temporal)
+(:objects
+	dron1 - dron
+	deposito refugio1 refugio2 refugio3 refugio4 - location
+	box1 box2 box3 box4 - box
+	comida medicina - bcontent
+	person1 person2 - person
+	carrier1 - carrier
+	n0 n1 n2 n3 n4 - num
+)
+
+(:init
+	(= (fly-cost deposito refugio1) 1)
+	(= (fly-cost deposito refugio2) 3)
+	(= (fly-cost deposito refugio3) 7)
+	(= (fly-cost deposito refugio4) 8)
+	(= (fly-cost refugio1 deposito) 17)
+	(= (fly-cost refugio1 refugio2) 20)
+	(= (fly-cost refugio1 refugio3) 1)
+	(= (fly-cost refugio1 refugio4) 18)
+	(= (fly-cost refugio2 deposito) 7)
+	(= (fly-cost refugio2 refugio1) 18)
+	(= (fly-cost refugio2 refugio3) 14)
+	(= (fly-cost refugio2 refugio4) 8)
+	(= (fly-cost refugio3 deposito) 15)
+	(= (fly-cost refugio3 refugio1) 19)
+	(= (fly-cost refugio3 refugio2) 9)
+	(= (fly-cost refugio3 refugio4) 1)
+	(= (fly-cost refugio4 deposito) 6)
+	(= (fly-cost refugio4 refugio1) 14)
+	(= (fly-cost refugio4 refugio2) 11)
+	(= (fly-cost refugio4 refugio3) 9)
+	(siguiente n0 n1)
+	(siguiente n1 n2)
+	(siguiente n2 n3)
+	(siguiente n3 n4)
+	(at-dron dron1 deposito)
+	(free dron1)
+	(dron-available dron1)
+	(at-carrier carrier1 deposito)
+	(boxes-in-carrier carrier1 n0)
+	(carrier-available carrier1)
+	(at-box box1 deposito)
+	(box-has box1 comida)
+	(at-box box2 deposito)
+	(box-has box2 comida)
+	(at-box box3 deposito)
+	(box-has box3 comida)
+	(at-box box4 deposito)
+	(box-has box4 medicina)
+	(at-person person1 refugio2)
+	(person-available person1)
+	(at-person person2 refugio2)
+	(person-available person2)
+)
+
+(:goal (and
+	(person-has person1 comida)
+	(person-has person2 comida)
+))
+(:metric minimize (total-time))
+)

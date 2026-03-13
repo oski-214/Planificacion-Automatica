@@ -1,124 +1,130 @@
 #!/usr/bin/env python3
 """
-Benchmark para LPG-TD: compara modalidades quality vs speed.
+Benchmark para Optic: modo anytime.
 
-Para cada número de drones/transportadores (1..10), genera problemas de tamaño
-creciente y encuentra el mayor que LPG-TD resuelve en modo quality en ≤ 1 minuto.
-Luego re-ejecuta ese problema en modo speed y compara resultados.
+Para cada numero de drones/transportadores (1..5), genera problemas de tamano
+creciente (incrementando goals de 1 en 1) y encuentra el mayor que Optic
+resuelve en <= 1 minuto. Para cada problema resuelto, extrae la primera y la
+ultima solucion encontrada en ese minuto y compara pasos y duracion.
 """
 
 import os
 import sys
 import subprocess
 import re
-import time
 import glob
+import shutil
 
-# Importar el generador de problemas
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from generate_problem_temporal import generate_problem
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LPG_TD = os.path.expanduser("~/.planutils/packages/lpg-td/bin/lpg-td")
+OPTIC = os.path.join(BASE_DIR, "optic-clp")
 DOMAIN = os.path.join(BASE_DIR, "domainemergencias_temporal.pddl")
 PROBLEMS_DIR = os.path.join(BASE_DIR, "problems")
 PLANS_DIR = os.path.join(BASE_DIR, "plans")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
-TIMEOUT = 60 # 1 minuto
+TIMEOUT = 60  # 1 minuto
 
 
-def parse_plan_output(output):
-    """Extrae métricas de la salida de LPG-TD.
-    Si hay varias soluciones, toma la última (mejor calidad)."""
-    metrics = {}
+def parse_optic_solutions(output):
+    """Extrae todas las soluciones del output anytime de Optic.
+    Devuelve una lista de dicts con metricas de cada solucion encontrada."""
 
-    # Buscar la última aparición de cada métrica (última solución = mejor)
-    for m in re.finditer(r"Total time:\s+([\d.]+)", output):
-        metrics["cpu_time"] = float(m.group(1))
+    solutions = []
 
-    for m in re.finditer(r"Actions:\s+(\d+)", output):
-        metrics["actions"] = int(m.group(1))
+    # Patron para detectar bloques de solucion de Optic
+    # Formato: ; Time X.XX seguido de lineas de acciones T.TTT: (ACTION) [D.DDD]
+    plan_pattern = re.compile(
+        r"; (?:Plan found with metric|Cost:)\s+([\d.]+).*?"
+        r"; (?:Time)\s+([\d.]+)\s*\n"
+        r"((?:\d+\.\d+:\s+\(.+?\)\s+\[\d+\.\d+\]\s*\n)+)",
+        re.DOTALL
+    )
 
-    for m in re.finditer(r"Duration:\s+([\d.]+)", output):
-        metrics["duration"] = float(m.group(1))
+    for m in plan_pattern.finditer(output):
+        metric = float(m.group(1))
+        cpu_time = float(m.group(2))
+        actions_block = m.group(3).strip()
+        num_actions = len(actions_block.split("\n"))
 
-    for m in re.finditer(r"MakeSpan\s+([\d.]+)", output):
-        metrics["makespan"] = float(m.group(1))
+        # Duracion = max(start_time + duration) de las acciones
+        max_end = 0.0
+        for action_line in actions_block.split("\n"):
+            am = re.match(r"([\d.]+):\s+\(.+?\)\s+\[([\d.]+)\]", action_line.strip())
+            if am:
+                end_time = float(am.group(1)) + float(am.group(2))
+                if end_time > max_end:
+                    max_end = end_time
 
-    for m in re.finditer(r"Plan quality:\s+([\d.]+)", output):
-        metrics["quality"] = float(m.group(1))
+        solutions.append({
+            "metric": metric,
+            "cpu_time": cpu_time,
+            "actions": num_actions,
+            "duration": max_end,
+            "plan": actions_block
+        })
 
-    # Contar soluciones encontradas
-    solutions = re.findall(r"Solution number:\s+(\d+)", output)
-    if solutions:
-        metrics["num_solutions"] = int(solutions[-1])
-
-    return metrics
+    return solutions
 
 
-def run_lpg_td(domain_file, problem_file, mode="speed", timeout=60, n_drones=1):
-    """Ejecuta LPG-TD y devuelve métricas del plan.
-    mode: 'speed', 'quality' o 'n1' (para -n 1)
-    Los planes se generan en PLANS_DIR/{n_drones}_drones/{mode}/
-    """
-    import shutil
+def run_optic(domain_file, problem_file, timeout=60, n_drones=1):
+    """Ejecuta Optic en modo anytime y devuelve primera y ultima solucion."""
 
-    plans_subdir = os.path.join(PLANS_DIR, f"{n_drones}_drones", mode)
+    plans_subdir = os.path.join(PLANS_DIR, f"{n_drones}_drones")
     os.makedirs(plans_subdir, exist_ok=True)
 
-    # Copiar el problema a la subcarpeta para que LPG-TD genere planes ahí
-    prob_basename = os.path.basename(problem_file)
-    local_prob = os.path.join(plans_subdir, prob_basename)
-    shutil.copy2(problem_file, local_prob)
-
-    if mode == "quality":
-        # -quality desactiva best-first search y no converge en este dominio temporal.
-        # Usamos -n 10 para buscar hasta 10 soluciones mejorando iterativamente,
-        # lo cual emula el comportamiento de optimización de calidad.
-        cmd = [LPG_TD, "-o", domain_file, "-f", prob_basename, "-n", "10", "-cputime", str(timeout)]
-    elif mode == "speed":
-        cmd = [LPG_TD, "-o", domain_file, "-f", prob_basename, "-speed", "-cputime", str(timeout)]
-    else:
-        cmd = [LPG_TD, "-o", domain_file, "-f", prob_basename, "-n", "1", "-cputime", str(timeout)]
+    cmd = [OPTIC, domain_file, problem_file]
 
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout + 10, cwd=plans_subdir
+            cmd, capture_output=True, text=True, timeout=timeout,
+            cwd=plans_subdir
         )
         output = result.stdout + result.stderr
+    except subprocess.TimeoutExpired as e:
+        # Optic fue cortado por timeout - capturar el output parcial
+        output = ""
+        if e.stdout:
+            output += e.stdout if isinstance(e.stdout, str) else e.stdout.decode(errors="replace")
+        if e.stderr:
+            output += e.stderr if isinstance(e.stderr, str) else e.stderr.decode(errors="replace")
 
-        metrics = parse_plan_output(output)
-        if metrics:
-            metrics["solved"] = True
-        else:
-            metrics["solved"] = False
+    solutions = parse_optic_solutions(output)
 
-        # Limpiar la copia temporal del problema
-        if os.path.exists(local_prob):
-            os.remove(local_prob)
+    if not solutions:
+        return {"solved": False}
 
-        # Para este problema, quedarse solo con el mejor plan (el de número más alto)
-        # y renombrarlo a un nombre limpio sin sufijo numérico
-        plan_prefix = f"plan_{prob_basename}"
-        this_plans = sorted(glob.glob(os.path.join(plans_subdir, f"{plan_prefix}*")))
-        if this_plans:
-            best_plan = this_plans[-1]
-            clean_name = os.path.join(plans_subdir, f"{plan_prefix}.SOL")
-            if best_plan != clean_name:
-                if os.path.exists(clean_name):
-                    os.remove(clean_name)
-                os.rename(best_plan, clean_name)
-            # Borrar los intermedios que no sean el renombrado
-            for pf in glob.glob(os.path.join(plans_subdir, f"{plan_prefix}*")):
-                if pf != clean_name:
-                    os.remove(pf)
+    first = solutions[0]
+    last = solutions[-1]
 
-        return metrics
+    # Guardar primer y ultimo plan
+    prob_basename = os.path.basename(problem_file).replace(".pddl", "")
+    if first["plan"]:
+        with open(os.path.join(plans_subdir, f"{prob_basename}_first.SOL"), "w") as f:
+            f.write(f"; Primera solucion - Metric: {first['metric']}, Time: {first['cpu_time']}s\n")
+            f.write(f"; Actions: {first['actions']}, Duration: {first['duration']}\n\n")
+            f.write(first["plan"] + "\n")
+    if last["plan"] and len(solutions) > 1:
+        with open(os.path.join(plans_subdir, f"{prob_basename}_last.SOL"), "w") as f:
+            f.write(f"; Ultima solucion - Metric: {last['metric']}, Time: {last['cpu_time']}s\n")
+            f.write(f"; Actions: {last['actions']}, Duration: {last['duration']}\n\n")
+            f.write(last["plan"] + "\n")
 
-    except subprocess.TimeoutExpired:
-        if os.path.exists(local_prob):
-            os.remove(local_prob)
-        return {"solved": False, "cpu_time": timeout}
+    return {
+        "solved": True,
+        "num_solutions": len(solutions),
+        "first": {
+            "cpu_time": first["cpu_time"],
+            "actions": first["actions"],
+            "duration": first["duration"],
+        },
+        "last": {
+            "cpu_time": last["cpu_time"],
+            "actions": last["actions"],
+            "duration": last["duration"],
+        }
+    }
 
 
 def generate_and_save_problem(num_drones, num_carriers, num_goals, num_locations=4, seed=42):
@@ -149,140 +155,115 @@ def generate_and_save_problem(num_drones, num_carriers, num_goals, num_locations
 
 def find_max_solvable(num_drones, max_timeout=TIMEOUT):
     """
-    Para un número dado de drones/carriers, encuentra el mayor número de
-    goals que LPG-TD puede resolver en quality mode dentro del timeout.
+    Para un numero dado de drones/carriers, encuentra el mayor numero de
+    goals que Optic puede resolver dentro del timeout.
+    Incrementa de 1 en 1 como indica el enunciado.
     """
-    # Empezamos con goals pequeños y vamos subiendo
-    goal_sizes = list(range(2, 20, 2))  # 2, 4, 6, 8, 10, 12, 14, 16, 18
+    goal_sizes = list(range(1, 15))  # 1, 2, 3, ..., 14
 
-    best_goals = 0
-    best_file = None
-    best_metrics = None
+    all_results = []
 
     for goals in goal_sizes:
         prob_file = generate_and_save_problem(num_drones, num_drones, goals, seed=42)
-        print(f"  Probando {num_drones} drones, {goals} goals en modo quality... ", end="", flush=True)
+        print(f"  Probando {num_drones} drones, {goals} goals... ", end="", flush=True)
 
-        metrics = run_lpg_td(DOMAIN, prob_file, mode="quality", timeout=max_timeout, n_drones=num_drones)
+        result = run_optic(DOMAIN, prob_file, timeout=max_timeout, n_drones=num_drones)
 
-        if metrics.get("solved"):
-            cpu = metrics.get("cpu_time", "?")
-            dur = metrics.get("duration", "?")
-            print(f"RESUELTO (cpu={cpu:.2f}s, duración={dur})")
-            best_goals = goals
-            best_file = prob_file
-            best_metrics = metrics
+        if result.get("solved"):
+            first = result["first"]
+            last = result["last"]
+            nsol = result["num_solutions"]
+            print(f"OK ({nsol} sol, primera: {first['duration']:.1f}, ultima: {last['duration']:.1f})")
+            all_results.append({"goals": goals, "result": result})
         else:
             print(f"TIMEOUT (>{max_timeout}s)")
             break
 
-    return best_goals, best_file, best_metrics
+    return all_results
 
 
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
     # Limpiar carpetas de ejecuciones anteriores
-    import shutil
     if os.path.exists(PLANS_DIR):
         shutil.rmtree(PLANS_DIR)
     if os.path.exists(PROBLEMS_DIR):
         shutil.rmtree(PROBLEMS_DIR)
 
-    results = []
+    all_data = []
 
-    print("=" * 80)
-    print("BENCHMARK LPG-TD: quality vs speed")
-    print("=" * 80)
+    print("=" * 100)
+    print("BENCHMARK OPTIC: modo anytime (primera vs ultima solucion)")
+    print("=" * 100)
 
-    for n_drones in range(1, 11):
+    for n_drones in range(1, 6):
         print(f"\n--- {n_drones} dron(es) / {n_drones} transportador(es) ---")
-        max_goals, prob_file, quality_metrics = find_max_solvable(n_drones)
+        drone_results = find_max_solvable(n_drones)
 
-        if max_goals == 0 or quality_metrics is None:
-            print(f"  No se pudo resolver ningún problema con {n_drones} drones.")
-            results.append({
-                "drones": n_drones,
-                "max_goals": 0,
-                "quality": None,
-                "speed": None
-            })
-            continue
+        if not drone_results:
+            print(f"  No se pudo resolver ningun problema con {n_drones} drones.")
 
-        print(f"  Mayor problema resuelto en quality: {max_goals} goals")
-
-        # Re-ejecutar en modo speed con el mismo problema
-        print(f"  Ejecutando en modo speed... ", end="", flush=True)
-        speed_metrics = run_lpg_td(DOMAIN, prob_file, mode="speed", timeout=TIMEOUT, n_drones=n_drones)
-
-        if speed_metrics.get("solved"):
-            cpu = speed_metrics.get("cpu_time", "?")
-            dur = speed_metrics.get("duration", "?")
-            print(f"RESUELTO (cpu={cpu:.2f}s, duración={dur})")
-        else:
-            print("TIMEOUT")
-
-        results.append({
+        all_data.append({
             "drones": n_drones,
-            "max_goals": max_goals,
-            "quality": quality_metrics,
-            "speed": speed_metrics if speed_metrics.get("solved") else None
+            "results": drone_results
         })
 
     # Imprimir tabla comparativa
-    print("\n" + "=" * 80)
-    print("TABLA COMPARATIVA: Quality vs Speed")
-    print("=" * 80)
+    print("\n" + "=" * 100)
+    print("TABLA COMPARATIVA: Primera vs Ultima solucion (Optic anytime)")
+    print("=" * 100)
 
-    header = f"{'Drones':>6} | {'Goals':>5} | {'T.Quality(s)':>12} | {'Pasos Q':>7} | {'Dur. Q':>8} | {'T.Speed(s)':>11} | {'Pasos S':>7} | {'Dur. S':>8}"
+    header = (f"{'Drones':>6} | {'Goals':>5} | {'#Sol':>4} | "
+              f"{'Pasos 1a':>8} | {'Dur. 1a':>8} | {'T. 1a(s)':>9} | "
+              f"{'Pasos Ult':>9} | {'Dur. Ult':>8} | {'T. Ult(s)':>10}")
+    separator = "-" * len(header)
     print(header)
-    print("-" * len(header))
+    print(separator)
 
-    for r in results:
-        d = r["drones"]
-        g = r["max_goals"]
-        if r["quality"] is None:
-            print(f"{d:>6} | {g:>5} | {'N/A':>12} | {'N/A':>7} | {'N/A':>8} | {'N/A':>11} | {'N/A':>7} | {'N/A':>8}")
+    for drone_data in all_data:
+        d = drone_data["drones"]
+        if not drone_data["results"]:
+            print(f"{d:>6} | {'N/A':>5} | {'N/A':>4} | "
+                  f"{'N/A':>8} | {'N/A':>8} | {'N/A':>9} | "
+                  f"{'N/A':>9} | {'N/A':>8} | {'N/A':>10}")
             continue
 
-        qt = r["quality"].get("cpu_time", 0)
-        qa = r["quality"].get("actions", 0)
-        qd = r["quality"].get("duration", 0)
-
-        if r["speed"]:
-            st = r["speed"].get("cpu_time", 0)
-            sa = r["speed"].get("actions", 0)
-            sd = r["speed"].get("duration", 0)
-            print(f"{d:>6} | {g:>5} |     {qt:>8.2f} | {qa:>7} | {qd:>8.1f} |    {st:>8.2f} | {sa:>7} | {sd:>8.1f}")
-        else:
-            print(f"{d:>6} | {g:>5} |     {qt:>8.2f} | {qa:>7} | {qd:>8.1f} | {'TIMEOUT':>11} | {'N/A':>7} | {'N/A':>8}")
+        for entry in drone_data["results"]:
+            g = entry["goals"]
+            r = entry["result"]
+            nsol = r["num_solutions"]
+            f1 = r["first"]
+            fl = r["last"]
+            print(f"{d:>6} | {g:>5} | {nsol:>4} | "
+                  f"{f1['actions']:>8} | {f1['duration']:>8.1f} | {f1['cpu_time']:>9.2f} | "
+                  f"{fl['actions']:>9} | {fl['duration']:>8.1f} | {fl['cpu_time']:>10.2f}")
 
     # Guardar resultados en archivo
     results_file = os.path.join(RESULTS_DIR, "benchmark_results.txt")
     with open(results_file, 'w') as f:
-        f.write("BENCHMARK LPG-TD: quality vs speed\n")
-        f.write("=" * 80 + "\n\n")
+        f.write("BENCHMARK OPTIC: modo anytime (primera vs ultima solucion)\n")
+        f.write("=" * 100 + "\n\n")
         f.write(header + "\n")
-        f.write("-" * len(header) + "\n")
+        f.write(separator + "\n")
 
-        for r in results:
-            d = r["drones"]
-            g = r["max_goals"]
-            if r["quality"] is None:
-                f.write(f"{d:>6} | {g:>5} | {'N/A':>12} | {'N/A':>7} | {'N/A':>8} | {'N/A':>11} | {'N/A':>7} | {'N/A':>8}\n")
+        for drone_data in all_data:
+            d = drone_data["drones"]
+            if not drone_data["results"]:
+                f.write(f"{d:>6} | {'N/A':>5} | {'N/A':>4} | "
+                        f"{'N/A':>8} | {'N/A':>8} | {'N/A':>9} | "
+                        f"{'N/A':>9} | {'N/A':>8} | {'N/A':>10}\n")
                 continue
 
-            qt = r["quality"].get("cpu_time", 0)
-            qa = r["quality"].get("actions", 0)
-            qd = r["quality"].get("duration", 0)
-
-            if r["speed"]:
-                st = r["speed"].get("cpu_time", 0)
-                sa = r["speed"].get("actions", 0)
-                sd = r["speed"].get("duration", 0)
-                f.write(f"{d:>6} | {g:>5} |     {qt:>8.2f} | {qa:>7} | {qd:>8.1f} |    {st:>8.2f} | {sa:>7} | {sd:>8.1f}\n")
-            else:
-                f.write(f"{d:>6} | {g:>5} |     {qt:>8.2f} | {qa:>7} | {qd:>8.1f} | {'TIMEOUT':>11} | {'N/A':>7} | {'N/A':>8}\n")
+            for entry in drone_data["results"]:
+                g = entry["goals"]
+                r = entry["result"]
+                nsol = r["num_solutions"]
+                f1 = r["first"]
+                fl = r["last"]
+                f.write(f"{d:>6} | {g:>5} | {nsol:>4} | "
+                        f"{f1['actions']:>8} | {f1['duration']:>8.1f} | {f1['cpu_time']:>9.2f} | "
+                        f"{fl['actions']:>9} | {fl['duration']:>8.1f} | {fl['cpu_time']:>10.2f}\n")
 
     print(f"\nResultados guardados en: {results_file}")
 
