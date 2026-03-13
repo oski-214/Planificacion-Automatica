@@ -1,0 +1,8 @@
+; Primera solucion - Metric: 38.004, Time: 0.04s
+; Actions: 5, Duration: 38.004
+
+0.000: (pick box1 deposito dron1)  [5.000]
+5.001: (put-in-carrier box1 deposito dron1 carrier1 n0 n1)  [5.000]
+10.002: (move-carrier deposito refugio4 dron1 carrier1)  [18.000]
+28.003: (take-from-carrier box1 refugio4 dron1 carrier1 n0 n1)  [5.000]
+33.004: (leave box1 refugio4 dron1 person1 comida)  [5.000]
