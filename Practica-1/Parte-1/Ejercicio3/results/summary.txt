@@ -1,0 +1,70 @@
+
+──────────────────────────────────────────────────────────────────────
+TABLA PARTE 1: Mayor tamaño resuelto en < 1 minuto
+──────────────────────────────────────────────────────────────────────
+| Algoritmo | Max Tamaño | Tiempo (s) | Acciones Plan | Óptimo              |
+| --------- | ---------- | ---------- | ------------- | ------------------- |
+| BFS       | 5          | 6.031      | 15            | Sí (coste uniforme) |
+| IDS       | 4          | 23.345     | 11            | Sí (coste uniforme) |
+| A*+hMAX   | 5          | 32.283     | 15            | Sí (hMAX admisible) |
+| GBFS+hMAX | 7          | 52.415     | 25            | No                  |
+
+──────────────────────────────────────────────────────────────────────
+TABLA PARTE 2: Algoritmos satisficing en problema tamaño 7
+──────────────────────────────────────────────────────────────────────
+| Algoritmo+Heurística | Tiempo (s) | Acciones Plan |
+| -------------------- | ---------- | ------------- |
+| GBFS+hMAX            | 51.675     | 25            |
+| GBFS+hADD            | 0.37       | 26            |
+| GBFS+hFF             | 0.247      | 23            |
+| GBFS+Landmark        | 0.108      | 27            |
+| EHC+hMAX             | TIMEOUT    | -             |
+| EHC+hADD             | 1.041      | 29            |
+| EHC+hFF              | 0.502      | 26            |
+| EHC+Landmark         | 0.124      | 31            |
+
+──────────────────────────────────────────────────────────────────────
+ANÁLISIS: GBFS vs EHC y el planificador FF
+──────────────────────────────────────────────────────────────────────
+
+GBFS (Greedy Best First Search):
+  • Expande siempre el nodo con menor valor heurístico h(n)
+  • No considera el coste acumulado g(n)
+  • Rápido pero no garantiza optimalidad
+  • Puede quedar atrapado en mínimos locales
+
+EHC (Enforced Hill Climbing):
+  • Versión más agresiva de hill climbing
+  • Busca en anchura hasta encontrar un sucesor con mejor h(n)
+  • Si encuentra uno mejor, reinicia la búsqueda desde ahí
+  • Más rápido que GBFS en muchos dominios
+  • Puede fallar si no existe camino de mejora (mesetas/dead-ends)
+
+El planificador FF (Fast Forward):
+  • Usa EHC como búsqueda principal con heurística hFF
+  • Si EHC falla (no encuentra mejora), cambia a GBFS como backup
+  • Combina velocidad de EHC con completitud de GBFS
+  • La heurística hFF está diseñada específicamente para FF
+
+
+──────────────────────────────────────────────────────────────────────
+TABLA PARTE 3: Algoritmos óptimos en problema tamaño 5
+──────────────────────────────────────────────────────────────────────
+| Algoritmo | Tiempo (s) | Acciones Plan | Solución Óptima |
+| --------- | ---------- | ------------- | --------------- |
+| BFS       | 6.169      | 15            | Sí              |
+| IDS       | TIMEOUT    | -             | -               |
+| A*+hMAX   | 32.214     | 15            | Sí              |
+| A*+lmcut  | 26.26      | 15            | Sí              |
+
+──────────────────────────────────────────────────────────────────────
+ANÁLISIS DE RESULTADOS
+──────────────────────────────────────────────────────────────────────
+✓ Mejor algoritmo por tiempo: BFS (6.169s)
+  Todos los algoritmos óptimos devuelven planes de igual longitud: 15 acciones
+
+Justificación esperada:
+  • lmcut suele ser más rápido que hMAX por ser más informada
+  • hMAX es más rápido que BFS/IDS porque poda más estados
+  • BFS explora todos los estados nivel por nivel (menos eficiente)
+  • IDS tiene overhead por reiniciar búsquedas en cada iteración
