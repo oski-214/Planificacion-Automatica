@@ -1,0 +1,30 @@
+
+
+======================================================================
+PARTE 2 (Ej 1.3.2): Heurísticas para planificadores satisficing
+======================================================================
+
+Usando problema de tamaño 5: /home/alexis/LabsPDDL/Parte-2/Ejercicio1/problems/problem_size5.pddl
+| Algoritmo+Heurística | Tiempo (s) | Acciones Plan |
+| -------------------- | ---------- | ------------- |
+| GBFS+hMAX            | 32.988     | 23            |
+| GBFS+hADD            | 0.597      | 28            |
+| GBFS+hFF             | 0.53       | 29            |
+| GBFS+Landmark        | 0.376      | 29            |
+| EHC+hMAX             | TIMEOUT    | -             |
+| EHC+hADD             | 1.209      | 35            |
+| EHC+hFF              | 2.463      | 31            |
+| EHC+Landmark         | 0.35       | 32            |
+
+
+======================================================================
+PARTE 3 (Ej 1.3.3): Heurísticas para planificadores óptimos
+======================================================================
+Problema a resolver: tamaño 4
+
+| Algoritmo | Tiempo (s) | Acciones Plan | Solución Óptima |
+| --------- | ---------- | ------------- | --------------- |
+| BFS       | 2.514      | 19            | Sí              |
+| IDS       | TIMEOUT    | -             | -               |
+| A*+hMAX   | 39.34      | 19            | Sí              |
+| A*+lmcut  | TIMEOUT    | -             | -               |
