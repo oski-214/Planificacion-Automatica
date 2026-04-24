@@ -1,0 +1,52 @@
+Problema     | Tiempo Used 
+------------------------------
+p10          | 0.006       
+p20          | 0.01        
+p30          | 0.014       
+p40          | 0.021       
+p50          | 0.019       
+p60          | 0.018       
+p70          | 0.019       
+p80          | 0.019       
+p90          | 0.027       
+p100         | 0.027       
+p110         | 0.027       
+p120         | 0.035       
+p130         | 0.037       
+p140         | 0.023       
+p150         | 0.03        
+p160         | 0.035       
+p170         | 0.037       
+p180         | 0.044       
+p190         | 0.036       
+p200         | 0.037       
+p210         | 0.039       
+p220         | 0.044       
+p230         | 0.046       
+p240         | 0.049       
+p250         | 0.051       
+p260         | 0.043       
+p270         | 0.052       
+p280         | 0.062       
+p290         | 0.061       
+p300         | 0.063       
+p310         | 0.06        
+p320         | 0.061       
+p330         | 0.064       
+p340         | 0.059       
+p350         | 0.066       
+p360         | 0.066       
+p370         | 0.066       
+p380         | 0.071       
+p390         | Error en ejecucion
+p400         | Error en ejecucion
+p410         | Error en ejecucion
+p420         | Error en ejecucion
+p430         | Error en ejecucion
+p440         | Error en ejecucion
+p450         | Error en ejecucion
+p460         | Error en ejecucion
+p470         | Error en ejecucion
+p480         | Error en ejecucion
+p490         | Error en ejecucion
+p500         | Error en ejecucion

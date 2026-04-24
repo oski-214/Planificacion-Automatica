@@ -1,0 +1,50 @@
+
+1 plan(s) were found:
+
+Plan #1:
+Plan cost: 40.0
+
+(!move d1 loc-base loc-almacen)
+(!pick d1 g1 b1 loc-almacen)
+(!move d1 loc-almacen loc6)
+(!leave d1 g1 b1 loc6 p1 comida)
+(!move d1 loc6 loc-almacen)
+(!pick d1 g2 b6 loc-almacen)
+(!move d1 loc-almacen loc2)
+(!leave d1 g2 b6 loc2 p2 medicina)
+(!move d1 loc2 loc-almacen)
+(!pick d1 g1 b7 loc-almacen)
+(!move d1 loc-almacen loc7)
+(!leave d1 g1 b7 loc7 p3 medicina)
+(!move d1 loc7 loc-almacen)
+(!pick d1 g2 b2 loc-almacen)
+(!move d1 loc-almacen loc4)
+(!leave d1 g2 b2 loc4 p4 comida)
+(!move d1 loc4 loc-almacen)
+(!pick d1 g1 b8 loc-almacen)
+(!move d1 loc-almacen loc7)
+(!leave d1 g1 b8 loc7 p5 medicina)
+(!move d1 loc7 loc-almacen)
+(!pick d1 g2 b3 loc-almacen)
+(!move d1 loc-almacen loc8)
+(!leave d1 g2 b3 loc8 p6 comida)
+(!move d1 loc8 loc-almacen)
+(!pick d1 g1 b9 loc-almacen)
+(!move d1 loc-almacen loc9)
+(!leave d1 g1 b9 loc9 p7 medicina)
+(!move d1 loc9 loc-almacen)
+(!pick d1 g2 b10 loc-almacen)
+(!move d1 loc-almacen loc6)
+(!leave d1 g2 b10 loc6 p8 medicina)
+(!move d1 loc6 loc-almacen)
+(!pick d1 g1 b4 loc-almacen)
+(!move d1 loc-almacen loc3)
+(!leave d1 g1 b4 loc3 p9 comida)
+(!move d1 loc3 loc-almacen)
+(!pick d1 g2 b5 loc-almacen)
+(!move d1 loc-almacen loc1)
+(!leave d1 g2 b5 loc1 p10 comida)
+--------------------
+
+Time Used = 0.006
+

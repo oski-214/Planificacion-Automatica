@@ -1,0 +1,12 @@
+(defproblem problem emergencias
+    (
+        ;; Estado inicial
+        (at-dron d1 loc-base)
+        (free g1)
+        (at-box b1 loc-almacen)
+        (box-has b1 medicina)
+        (at-person juan loc-hospital)
+        (necesita juan medicina) ;; <--- La meta ahora es un predicado
+    )
+    ((enviar-todo))
+)

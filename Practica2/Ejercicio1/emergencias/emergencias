@@ -1,0 +1,35 @@
+(defdomain emergencias
+  (
+    (:operator (!move ?d ?from ?to)
+      ((at-dron ?d ?from))
+      ((at-dron ?d ?from))
+      ((at-dron ?d ?to))
+    )
+
+    (:operator (!pick ?d ?g ?b ?l)
+      ((at-dron ?d ?l) (at-box ?b ?l) (free ?g))
+      ((at-box ?b ?l) (free ?g))
+      ((carrying ?d ?g ?b))
+    )
+
+    (:operator (!leave ?d ?g ?b ?l ?p ?c)
+      ((at-dron ?d ?l) (carrying ?d ?g ?b) (at-person ?p ?l) (box-has ?b ?c))
+      ((carrying ?d ?g ?b) (box-has ?b ?c) (necesita ?p ?c))
+      ((at-box ?b ?l) (free ?g) (person-has ?p ?c))
+    )
+
+    (:method (enviar-todo)
+      Case1 ((necesita ?p ?c) (box-has ?b ?c) (at-box ?b ?lb) (at-person ?p ?lp) (at-dron ?d ?ld) (free ?g))
+            ((transportar ?d ?g ?b ?lb ?lp ?p ?c) (enviar-todo))
+      Case2 ()
+            ()
+    )
+
+    (:method (transportar ?d ?g ?b ?from ?to ?p ?c)
+      Case1 ((at-dron ?d ?from))
+            ((!pick ?d ?g ?b ?from) (!move ?d ?from ?to) (!leave ?d ?g ?b ?to ?p ?c))
+      Case2 ((at-dron ?d ?actual))
+            ((!move ?d ?actual ?from) (!pick ?d ?g ?b ?from) (!move ?d ?from ?to) (!leave ?d ?g ?b ?to ?p ?c))
+    )
+  )
+)
