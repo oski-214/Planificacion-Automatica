@@ -3,10 +3,15 @@
         ;; Estado inicial
         (at-dron d1 loc-base)
         (free g1)
+        (free g2)
         (at-box b1 loc-almacen)
+        (at-box b2 loc-almacen)
         (box-has b1 medicina)
+        (box-has b2 comida)
         (at-person juan loc-hospital)
-        (necesita juan medicina) ;; <--- La meta ahora es un predicado
+        (at-person paco loc-casa)
+        (necesita juan medicina)
+        (necesita paco comida) ;; <--- La meta ahora es un predicado
     )
     ((enviar-todo))
 )
