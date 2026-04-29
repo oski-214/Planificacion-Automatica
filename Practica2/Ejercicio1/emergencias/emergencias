@@ -18,18 +18,52 @@
       ((at-box ?b ?l) (free ?g) (person-has ?p ?c))
     )
 
+    ;; --- MÉTODOS ---
+
     (:method (enviar-todo)
-      Case1 ((necesita ?p ?c) (box-has ?b ?c) (at-box ?b ?lb) (at-person ?p ?lp) (at-dron ?d ?ld) (free ?g))
-            ((transportar ?d ?g ?b ?lb ?lp ?p ?c) (enviar-todo))
-      Case2 ()
-            ()
+      ;; Si todavía hay alguien que necesite algo, vamos a por ello
+      Continuar ((necesita ?p ?c))
+                ((preparar-viaje) (enviar-todo))
+      
+      ;; Si no hay necesidades, terminamos
+      Terminar  () 
+                ()
     )
 
-    (:method (transportar ?d ?g ?b ?from ?to ?p ?c)
-      Case1 ((at-dron ?d ?from))
-            ((!pick ?d ?g ?b ?from) (!move ?d ?from ?to) (!leave ?d ?g ?b ?to ?p ?c))
-      Case2 ((at-dron ?d ?actual))
-            ((!move ?d ?actual ?from) (!pick ?d ?g ?b ?from) (!move ?d ?from ?to) (!leave ?d ?g ?b ?to ?p ?c))
+    (:method (preparar-viaje)
+      ;; Buscamos dónde hay una caja y vamos allí (al almacén)
+      IrAlAlmacen ((necesita ?p ?c) (box-has ?b ?c) (at-box ?b ?lb) (at-dron ?d ?pos))
+                  ((navegar ?d ?pos ?lb) (llenar-brazos ?d ?lb) (repartir-carga ?d))
+    )
+
+    (:method (llenar-brazos ?d ?l)
+      ;; Caso 1: Intentar coger DOS cajas si hay dos garras libres y dos necesidades
+      CargarDos ((free g1) (free g2)
+                 (necesita ?p1 ?c1) (box-has ?b1 ?c1) (at-box ?b1 ?l)
+                 (necesita ?p2 ?c2) (box-has ?b2 ?c2) (at-box ?b2 ?l))
+                ((!pick ?d g1 ?b1 ?l) (!pick ?d g2 ?b2 ?l))
+
+      ;; Caso 2: Coger solo una si no hay más o solo queda una garra
+      CargarUno ((free ?g) (necesita ?p ?c) (box-has ?b ?c) (at-box ?b ?l))
+                ((!pick ?d ?g ?b ?l))
+
+      ;; Caso 3: Ya no se puede cargar más
+      Lleno     () ()
+    )
+
+    (:method (repartir-carga ?d)
+      ;; Si llevamos algo en una garra, vamos a dejarlo
+      Entregar  ((carrying ?d ?g ?b) (box-has ?b ?c) (necesita ?p ?c) (at-person ?p ?lp) (at-dron ?d ?pos))
+                ((navegar ?d ?pos ?lp) (!leave ?d ?g ?b ?lp ?p ?c) (repartir-carga ?d))
+      
+      ;; Si ya no llevamos nada, volvemos
+      Volver    () ()
+    )
+
+    ;; Navegación que evita el (!move loc6 loc6)
+    (:method (navegar ?d ?from ?to)
+      Quieto ((at-dron ?d ?to)) ()
+      Mover  ()                 ((!move ?d ?from ?to))
     )
   )
 )
