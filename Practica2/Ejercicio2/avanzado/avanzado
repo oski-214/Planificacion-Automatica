@@ -1,0 +1,194 @@
+(defdomain avanzado (
+  
+  ;; ==========================================
+  ;; OPERADORES CON COSTE REAL ACTUALIZADO
+  ;; ==========================================
+
+  (:operator (!volar ?dron ?origen ?destino)
+    ((at-dron ?dron ?origen) (capacidad ?dron ?cap) (coste-total ?coste-actual))
+    ((at-dron ?dron ?origen) (coste-total ?coste-actual))
+    ((at-dron ?dron ?destino) (coste-total (call + ?coste-actual (call + 50 (call / ?cap 10)))))
+    ;; Añadimos el coste para que JSHOP2 lo sume en el "Plan cost" de la cabecera
+    (call + 50 (call / ?cap 10))
+  )
+
+  (:operator (!coger ?dron ?loc ?tipo ?cantidad)
+    ((at-dron ?dron ?loc) (cajas-en ?loc ?tipo ?stock) (carga ?dron ?tipo ?carga-tipo))
+    ((cajas-en ?loc ?tipo ?stock) (carga ?dron ?tipo ?carga-tipo))
+    ((cajas-en ?loc ?tipo (call - ?stock ?cantidad)) (carga ?dron ?tipo (call + ?carga-tipo ?cantidad)))
+    1 ;; Coste fijo por cargar
+  )
+
+  (:operator (!entregar ?dron ?loc ?tipo ?cantidad)
+    ((at-dron ?dron ?loc) (carga ?dron ?tipo ?carga-tipo) (necesidad ?loc ?tipo ?nec))
+    ((carga ?dron ?tipo ?carga-tipo) (necesidad ?loc ?tipo ?nec))
+    ((carga ?dron ?tipo (call - ?carga-tipo ?cantidad)) (necesidad ?loc ?tipo (call - ?nec ?cantidad)))
+    1 ;; Coste fijo por entregar
+  )
+
+  (:operator (!asignar-trans ?dron ?trans ?cap)
+    ((trans-en ?trans loc-base) (capacidad ?dron ?cap-antigua))
+    ((trans-en ?trans loc-base) (capacidad ?dron ?cap-antigua))
+    ((capacidad ?dron ?cap) (usando-trans ?dron ?trans))
+    0
+  )
+
+  (:operator (!asignar-trans-suelto ?dron ?cap)
+    ((capacidad ?dron ?cap-antigua))
+    ((capacidad ?dron ?cap-antigua))
+    ((capacidad ?dron ?cap) (modo-suelto ?dron))
+    0
+  )
+
+  (:operator (!soltar-trans ?dron)
+    ((usando-trans ?dron ?trans) (capacidad ?dron ?cap-actual))
+    ((usando-trans ?dron ?trans) (capacidad ?dron ?cap-actual))
+    ((trans-en ?trans loc-base) (capacidad ?dron 0))
+    0
+  )
+
+  ;; Operador para resetear el dron cuando va sin transportador
+  (:operator (!reset-suelto ?dron)
+    ((modo-suelto ?dron) (capacidad ?dron ?cap-actual))
+    ((modo-suelto ?dron) (capacidad ?dron ?cap-actual))
+    ((capacidad ?dron 0))
+    0
+  )
+
+  (:operator (!marcar-asignado ?loc) () () ((asignado ?loc)) 0)
+  (:operator (!desmarcar-asignado ?loc) ((asignado ?loc)) ((asignado ?loc)) () 0)
+
+  ;; ==========================================
+  ;; MÉTODOS (Sin cambios significativos en la lógica)
+  ;; ==========================================
+
+  (:method (navegar ?dron ?destino)
+    Quieto ((at-dron ?dron ?destino)) ()
+    Mover  ((at-dron ?dron ?origen)) ((!volar ?dron ?origen ?destino))
+  )
+
+  (:method (cargar-tipo ?dron ?tipo ?nec)
+    carga-total
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (call >= (call - ?cap (call + ?cm ?cc)) ?nec) (call > ?nec 0)
+    )
+    ((!coger ?dron loc-almacen ?tipo ?nec))
+
+    carga-parcial
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (assign ?hueco (call - ?cap (call + ?cm ?cc)))
+      (call < ?hueco ?nec) (call > ?hueco 0)
+    )
+    ((!coger ?dron loc-almacen ?tipo ?hueco))
+
+    nada () ()
+  )
+
+  (:method (descargar-tipo ?dron ?loc ?tipo ?nec)
+    descarga-total
+    ((carga ?dron ?tipo ?llevo) (call >= ?llevo ?nec) (call > ?nec 0))
+    ((!entregar ?dron ?loc ?tipo ?nec))
+
+    descarga-parcial
+    ((carga ?dron ?tipo ?llevo) (call < ?llevo ?nec) (call > ?llevo 0))
+    ((!entregar ?dron ?loc ?tipo ?llevo))
+
+    nada () ()
+  )
+
+  (:method (entregar-todo-posible ?dron ?loc)
+    entregar
+    ((necesidad ?loc medicina ?m) (necesidad ?loc comida ?c))
+    ((descargar-tipo ?dron ?loc medicina ?m) (descargar-tipo ?dron ?loc comida ?c))
+  )
+
+  (:method (enviar-todo-avanzado)
+    continuar
+    ((necesidad ?loc medicina ?m) (necesidad ?loc comida ?c) (call > (call + ?m ?c) 0))
+    ((preparar-envio d1 ?loc) (enviar-todo-avanzado))
+
+    terminar () ()
+  )
+
+  (:method (preparar-envio ?dron ?loc)
+    ;; RAMA 1: Transportador suficiente
+    trans-suficiente
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (trans-en ?trans loc-base) (capacidad-trans ?trans ?cap)
+      (call >= ?cap (call + ?m ?c))
+    )
+    (
+      (!asignar-trans ?dron ?trans ?cap)
+      (!marcar-asignado ?loc)
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (cargar-para-otro ?dron)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (!desmarcar-asignado ?loc)
+      (repartir-sobras ?dron)
+      (navegar ?dron loc-base)
+      (!soltar-trans ?dron)
+    )
+
+    ;; RAMA 2: Transportador insuficiente
+    trans-insuficiente
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (trans-en ?trans loc-base) (capacidad-trans ?trans ?cap)
+      (call < ?cap (call + ?m ?c))
+    )
+    (
+      (!asignar-trans ?dron ?trans ?cap)
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (navegar ?dron loc-base)
+      (!soltar-trans ?dron)
+    )
+
+    ;; RAMA 3: Cajas sueltas (Emergencia)
+    trans-emergencia-sueltas
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (not (and (trans-en ?t loc-base) (capacidad-trans ?t ?cp)))
+    )
+    (
+      (!asignar-trans-suelto ?dron 2) 
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (navegar ?dron loc-base)
+      (!reset-suelto ?dron) ;; Reset de capacidad al volver a base
+    )
+  )
+
+  (:method (cargar-para-otro ?dron)
+    hay-hueco
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (call > (call - ?cap (call + ?cm ?cc)) 0)
+      (necesidad ?otra medicina ?m2) (necesidad ?otra comida ?c2)
+      (call > (call + ?m2 ?c2) 0) (not (asignado ?otra))
+    )
+    ((!marcar-asignado ?otra) (cargar-tipo ?dron medicina ?m2) (cargar-tipo ?dron comida ?c2))
+    fin () ()
+  )
+
+  (:method (repartir-sobras ?dron)
+    hay-otro ((asignado ?otra))
+    ((navegar ?dron ?otra) (entregar-todo-posible ?dron ?otra) (!desmarcar-asignado ?otra))
+    fin () ()
+  )
+))

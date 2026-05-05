@@ -1,0 +1,24 @@
+(defproblem problem avanzado
+  (
+    (at-dron d1 loc-base)
+    (capacidad d1 0)
+    (carga d1 medicina 0)
+    (carga d1 comida 0)
+    (coste-total 0)
+
+    ;; Solo dejamos un transportador con mucha capacidad
+    (trans-en t-grande loc-base)
+    (capacidad-trans t-grande 20)
+
+    (cajas-en loc-almacen medicina 100)
+    (cajas-en loc-almacen comida 100)
+
+    ;; Necesidades que suman 15 en total (caben de sobra en el de 20)
+    (necesidad loc1 medicina 3)
+    (necesidad loc1 comida 2)
+
+    (necesidad loc2 medicina 5)
+    (necesidad loc2 comida 5)
+  )
+  ((enviar-todo-avanzado))
+)

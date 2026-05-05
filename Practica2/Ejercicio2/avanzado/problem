@@ -1,0 +1,23 @@
+
+(defproblem problem avanzado
+  (
+    (at-dron d1 loc-base)
+    (capacidad d1 0)
+    (carga d1 medicina 0)
+    (carga d1 comida 0)
+    (coste-total 0)
+
+    ;; ¡OJO! No hay ningún (trans-en ...) declarado aquí. Base vacía de recursos.
+
+    (cajas-en loc-almacen medicina 100)
+    (cajas-en loc-almacen comida 100)
+
+    ;; Necesidad pequeña para que no se haga un plan eterno
+    (necesidad loc1 medicina 2)
+    (necesidad loc1 comida 1)
+    
+    (necesidad loc2 medicina 0)
+    (necesidad loc2 comida 0)
+  )
+  ((enviar-todo-avanzado))
+)
