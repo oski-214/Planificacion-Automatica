@@ -1,0 +1,22 @@
+(defproblem problem avanzado
+  (
+    (at-dron d1 loc-base)
+    (capacidad d1 0)
+    (capacidad-suelta d1 2)
+    (carga d1 medicina 0)
+    (carga d1 comida 0)
+    (coste-total 0)
+
+    ;; Sin transportadores: el dron debe hacer viajes con cajas sueltas.
+    (cajas-en loc-almacen medicina 100)
+    (cajas-en loc-almacen comida 100)
+
+    (necesidad loc1 medicina 2)
+    (necesidad loc1 comida 1)
+    (total-necesidad loc1 3)
+    (necesidad loc2 medicina 1)
+    (necesidad loc2 comida 1)
+    (total-necesidad loc2 2)
+  )
+  ((enviar-todo-avanzado))
+)

@@ -1,0 +1,28 @@
+(defproblem problem avanzado
+  (
+    (at-dron d1 loc-base)
+    (capacidad d1 0)
+    (capacidad-suelta d1 2)
+    (carga d1 medicina 0)
+    (carga d1 comida 0)
+    (coste-total 0)
+
+    ;; La primera localizacion atendida debe ser loc-grande por tener mayor necesidad total.
+    (trans-en t-medio loc-base)
+    (capacidad-trans t-medio 8)
+
+    (cajas-en loc-almacen medicina 100)
+    (cajas-en loc-almacen comida 100)
+
+    (necesidad loc-pequena medicina 1)
+    (necesidad loc-pequena comida 1)
+    (total-necesidad loc-pequena 2)
+    (necesidad loc-grande medicina 4)
+    (necesidad loc-grande comida 3)
+    (total-necesidad loc-grande 7)
+    (necesidad loc-media medicina 2)
+    (necesidad loc-media comida 2)
+    (total-necesidad loc-media 4)
+  )
+  ((enviar-todo-avanzado))
+)

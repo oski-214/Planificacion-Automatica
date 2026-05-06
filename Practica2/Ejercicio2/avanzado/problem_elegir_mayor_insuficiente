@@ -1,0 +1,26 @@
+(defproblem problem avanzado
+  (
+    (at-dron d1 loc-base)
+    (capacidad d1 0)
+    (capacidad-suelta d1 2)
+    (carga d1 medicina 0)
+    (carga d1 comida 0)
+    (coste-total 0)
+
+    ;; Ningun transportador cubre la necesidad inicial; debe elegirse el mayor: t-grande.
+    (trans-en t-mini loc-base)
+    (capacidad-trans t-mini 4)
+    (trans-en t-medio loc-base)
+    (capacidad-trans t-medio 7)
+    (trans-en t-grande loc-base)
+    (capacidad-trans t-grande 9)
+
+    (cajas-en loc-almacen medicina 100)
+    (cajas-en loc-almacen comida 100)
+
+    (necesidad loc1 medicina 6)
+    (necesidad loc1 comida 6)
+    (total-necesidad loc1 12)
+  )
+  ((enviar-todo-avanzado))
+)

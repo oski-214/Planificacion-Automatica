@@ -1,0 +1,255 @@
+(defdomain avanzado (
+
+  ;; ==========================================
+  ;; OPERADORES
+  ;; ==========================================
+
+  (:operator (!volar ?dron ?origen ?destino)
+    ((at-dron ?dron ?origen) (capacidad ?dron ?cap) (coste-total ?coste-actual))
+    ((at-dron ?dron ?origen) (coste-total ?coste-actual))
+    ((at-dron ?dron ?destino) (coste-total (call + ?coste-actual (call + 50 (call / ?cap 10)))))
+    (call + 50 (call / ?cap 10))
+  )
+
+  (:operator (!coger ?dron ?loc ?tipo ?cantidad)
+    ((at-dron ?dron ?loc) (cajas-en ?loc ?tipo ?stock) (carga ?dron ?tipo ?carga-tipo) (call > ?cantidad 0) (call >= ?stock ?cantidad))
+    ((cajas-en ?loc ?tipo ?stock) (carga ?dron ?tipo ?carga-tipo))
+    ((cajas-en ?loc ?tipo (call - ?stock ?cantidad)) (carga ?dron ?tipo (call + ?carga-tipo ?cantidad)))
+    1
+  )
+
+  (:operator (!entregar ?dron ?loc ?tipo ?cantidad)
+    ((at-dron ?dron ?loc) (carga ?dron ?tipo ?carga-tipo) (necesidad ?loc ?tipo ?nec) (total-necesidad ?loc ?total) (call > ?cantidad 0) (call >= ?carga-tipo ?cantidad) (call >= ?nec ?cantidad))
+    ((carga ?dron ?tipo ?carga-tipo) (necesidad ?loc ?tipo ?nec) (total-necesidad ?loc ?total))
+    ((carga ?dron ?tipo (call - ?carga-tipo ?cantidad)) (necesidad ?loc ?tipo (call - ?nec ?cantidad)) (total-necesidad ?loc (call - ?total ?cantidad)))
+    1
+  )
+
+  (:operator (!asignar-trans ?dron ?trans ?cap)
+    ((trans-en ?trans loc-base) (capacidad ?dron ?cap-antigua) (capacidad-trans ?trans ?cap))
+    ((trans-en ?trans loc-base) (capacidad ?dron ?cap-antigua))
+    ((capacidad ?dron ?cap) (usando-trans ?dron ?trans))
+    0
+  )
+
+  (:operator (!asignar-trans-suelto ?dron ?cap)
+    ((capacidad ?dron ?cap-antigua) (capacidad-suelta ?dron ?cap))
+    ((capacidad ?dron ?cap-antigua))
+    ((capacidad ?dron ?cap) (modo-suelto ?dron))
+    0
+  )
+
+  (:operator (!soltar-trans ?dron)
+    ((at-dron ?dron loc-base) (usando-trans ?dron ?trans) (capacidad ?dron ?cap-actual))
+    ((usando-trans ?dron ?trans) (capacidad ?dron ?cap-actual))
+    ((trans-en ?trans loc-base) (capacidad ?dron 0))
+    0
+  )
+
+  (:operator (!reset-suelto ?dron)
+    ((at-dron ?dron loc-base) (modo-suelto ?dron) (capacidad ?dron ?cap-actual))
+    ((modo-suelto ?dron) (capacidad ?dron ?cap-actual))
+    ((capacidad ?dron 0))
+    0
+  )
+
+  (:operator (!marcar-asignado ?loc) () () ((asignado ?loc)) 0)
+  (:operator (!desmarcar-asignado ?loc) ((asignado ?loc)) ((asignado ?loc)) () 0)
+
+  ;; ==========================================
+  ;; METODOS AUXILIARES
+  ;; ==========================================
+
+  (:method (navegar ?dron ?destino)
+    quieto ((at-dron ?dron ?destino)) ()
+    mover ((at-dron ?dron ?origen)) ((!volar ?dron ?origen ?destino))
+  )
+
+  (:method (cargar-tipo ?dron ?tipo ?nec)
+    carga-total
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (call >= (call - ?cap (call + ?cm ?cc)) ?nec) (call > ?nec 0)
+    )
+    ((!coger ?dron loc-almacen ?tipo ?nec))
+
+    carga-parcial
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (assign ?hueco (call - ?cap (call + ?cm ?cc)))
+      (call < ?hueco ?nec) (call > ?hueco 0)
+    )
+    ((!coger ?dron loc-almacen ?tipo ?hueco))
+
+    nada () ()
+  )
+
+  (:method (descargar-tipo ?dron ?loc ?tipo ?nec)
+    descarga-total
+    ((carga ?dron ?tipo ?llevo) (call >= ?llevo ?nec) (call > ?nec 0))
+    ((!entregar ?dron ?loc ?tipo ?nec))
+
+    descarga-parcial
+    ((carga ?dron ?tipo ?llevo) (call < ?llevo ?nec) (call > ?llevo 0))
+    ((!entregar ?dron ?loc ?tipo ?llevo))
+
+    nada () ()
+  )
+
+  (:method (entregar-todo-posible ?dron ?loc)
+    entregar
+    ((necesidad ?loc medicina ?m) (necesidad ?loc comida ?c))
+    ((descargar-tipo ?dron ?loc medicina ?m) (descargar-tipo ?dron ?loc comida ?c))
+  )
+
+  (:method (llevar-suelto ?dron ?loc)
+    con-cajas-sueltas
+    (
+      (capacidad-suelta ?dron ?cap-suelta)
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (call > (call + ?m ?c) 0)
+    )
+    (
+      (!asignar-trans-suelto ?dron ?cap-suelta)
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (navegar ?dron loc-base)
+      (!reset-suelto ?dron)
+    )
+  )
+
+  (:method (completar-residuo-suelto ?dron ?loc)
+    queda-resto-pequeno
+    (
+      (capacidad-suelta ?dron ?cap-suelta)
+      (total-necesidad ?loc ?total-resto)
+      (call > ?total-resto 0) (call <= ?total-resto ?cap-suelta)
+    )
+    ((llevar-suelto ?dron ?loc))
+
+    no-hay-resto-o-no-cabe () ()
+  )
+
+  ;; ==========================================
+  ;; METODOS PRINCIPALES
+  ;; ==========================================
+
+  (:method (enviar-todo-avanzado)
+    continuar-con-mayor-necesidad
+    (
+      (total-necesidad ?loc ?total)
+      (call > ?total 0)
+      (not (hay-necesidad-mayor ?total))
+    )
+    ((preparar-envio d1 ?loc) (enviar-todo-avanzado))
+
+    terminar () ()
+  )
+
+  (:method (preparar-envio ?dron ?loc)
+    transporte-menor-suficiente
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (total-necesidad ?loc ?total)
+      (call > ?total 0)
+      (trans-en ?trans loc-base) (capacidad-trans ?trans ?cap)
+      (call >= ?cap ?total)
+      (not (hay-trans-suficiente-menor ?total ?cap))
+    )
+    (
+      (!asignar-trans ?dron ?trans ?cap)
+      (!marcar-asignado ?loc)
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (cargar-para-otro ?dron)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (!desmarcar-asignado ?loc)
+      (repartir-sobras ?dron)
+      (navegar ?dron loc-base)
+      (!soltar-trans ?dron)
+    )
+
+    transporte-mayor-insuficiente
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (total-necesidad ?loc ?total)
+      (call > ?total 0)
+      (trans-en ?trans loc-base) (capacidad-trans ?trans ?cap)
+      (call < ?cap ?total)
+      (not (hay-trans-suficiente ?total))
+      (not (hay-trans-insuficiente-mayor ?total ?cap))
+    )
+    (
+      (!asignar-trans ?dron ?trans ?cap)
+      (navegar ?dron loc-almacen)
+      (cargar-tipo ?dron medicina ?m)
+      (cargar-tipo ?dron comida ?c)
+      (navegar ?dron ?loc)
+      (descargar-tipo ?dron ?loc medicina ?m)
+      (descargar-tipo ?dron ?loc comida ?c)
+      (navegar ?dron loc-base)
+      (!soltar-trans ?dron)
+      (completar-residuo-suelto ?dron ?loc)
+    )
+
+    sin-transportadores
+    (
+      (total-necesidad ?loc ?total)
+      (call > ?total 0)
+      (not (trans-en ?cualquier-trans loc-base))
+    )
+    ((llevar-suelto ?dron ?loc))
+  )
+
+  (:method (cargar-para-otro ?dron)
+    cargar-otra-mayor-que-cabe
+    (
+      (carga ?dron medicina ?cm) (carga ?dron comida ?cc) (capacidad ?dron ?cap)
+      (assign ?hueco (call - ?cap (call + ?cm ?cc)))
+      (call > ?hueco 0)
+      (necesidad ?otra medicina ?m2) (necesidad ?otra comida ?c2)
+      (total-necesidad ?otra ?total-otra)
+      (call > ?total-otra 0) (call <= ?total-otra ?hueco)
+      (not (asignado ?otra))
+      (not (hay-otra-que-cabe-mayor ?hueco ?total-otra))
+    )
+    ((!marcar-asignado ?otra) (cargar-tipo ?dron medicina ?m2) (cargar-tipo ?dron comida ?c2) (cargar-para-otro ?dron))
+
+    fin () ()
+  )
+
+  (:method (repartir-sobras ?dron)
+    repartir-mayor-marcada
+    (
+      (asignado ?otra)
+      (total-necesidad ?otra ?total)
+      (call > ?total 0)
+      (not (hay-marcada-mayor ?total))
+    )
+    ((navegar ?dron ?otra) (entregar-todo-posible ?dron ?otra) (!desmarcar-asignado ?otra) (repartir-sobras ?dron))
+
+    limpiar-marcada-sin-resto
+    ((asignado ?otra))
+    ((!desmarcar-asignado ?otra) (repartir-sobras ?dron))
+
+    fin () ()
+  )
+
+  (:- (mayor-que ?a ?b) ((call > ?a ?b)))
+  (:- (menor-que ?a ?b) ((call < ?a ?b)))
+  (:- (mayor-o-igual ?a ?b) ((call >= ?a ?b)))
+  (:- (menor-o-igual ?a ?b) ((call <= ?a ?b)))
+  (:- (hay-necesidad-mayor ?total) ((total-necesidad ?otra ?total-otra) (mayor-que ?total-otra ?total)))
+  (:- (hay-trans-suficiente-menor ?total ?cap) ((trans-en ?otro-trans loc-base) (capacidad-trans ?otro-trans ?cap-otro) (mayor-o-igual ?cap-otro ?total) (menor-que ?cap-otro ?cap)))
+  (:- (hay-trans-suficiente ?total) ((trans-en ?trans loc-base) (capacidad-trans ?trans ?cap) (mayor-o-igual ?cap ?total)))
+  (:- (hay-trans-insuficiente-mayor ?total ?cap) ((trans-en ?otro-trans loc-base) (capacidad-trans ?otro-trans ?cap-otro) (menor-que ?cap-otro ?total) (mayor-que ?cap-otro ?cap)))
+  (:- (hay-otra-que-cabe-mayor ?hueco ?total) ((total-necesidad ?candidata ?total-candidata) (mayor-que ?total-candidata ?total) (menor-o-igual ?total-candidata ?hueco) (not (asignado ?candidata))))
+  (:- (hay-marcada-mayor ?total) ((asignado ?candidata) (total-necesidad ?candidata ?total-candidata) (mayor-que ?total-candidata ?total)))
+))
