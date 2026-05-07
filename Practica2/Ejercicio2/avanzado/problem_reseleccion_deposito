@@ -7,7 +7,7 @@
     (carga d1 comida 0)
     (coste-total 0)
 
-    ;; Tras un primer viaje con t-medio, el resto actualizado debe hacer elegir t-pequeno.
+    ;; Tras un primer viaje con t-medio , el resto actualizado debe hacer elegir t-pequeno.
     (trans-en t-pequeno loc-base)
     (capacidad-trans t-pequeno 5)
     (trans-en t-medio loc-base)

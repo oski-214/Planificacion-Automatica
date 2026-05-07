@@ -2,7 +2,7 @@
   (
     (at-dron d1 loc-base)
     (capacidad d1 0)
-    (capacidad-suelta d1 2)
+    (capacidad-suelta d1 1)
     (carga d1 medicina 0)
     (carga d1 comida 0)
     (coste-total 0)
@@ -14,9 +14,9 @@
     (cajas-en loc-almacen medicina 100)
     (cajas-en loc-almacen comida 100)
 
-    (necesidad loc1 medicina 4)
+    (necesidad loc1 medicina 3)
     (necesidad loc1 comida 3)
-    (total-necesidad loc1 7)
+    (total-necesidad loc1 6)
   )
   ((enviar-todo-avanzado))
 )

@@ -151,6 +151,17 @@
   )
 
   (:method (preparar-envio ?dron ?loc)
+    necesidad-unitaria-suelta
+    (
+      (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)
+      (total-necesidad ?loc ?total)
+      (capacidad-suelta ?dron ?cap-suelta)
+      (call = ?total 1)
+      (call <= ?total ?cap-suelta)
+      (call = (call + ?m ?c) ?total)
+    )
+    ((llevar-suelto ?dron ?loc))
+
     transporte-menor-suficiente
     (
       (necesidad ?loc medicina ?m) (necesidad ?loc comida ?c)

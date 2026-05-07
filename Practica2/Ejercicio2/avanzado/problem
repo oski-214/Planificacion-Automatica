@@ -2,21 +2,21 @@
   (
     (at-dron d1 loc-base)
     (capacidad d1 0)
-    (capacidad-suelta d1 2)
+    (capacidad-suelta d1 1)
     (carga d1 medicina 0)
     (carga d1 comida 0)
     (coste-total 0)
 
-    ;; Sin transportadores: el dron debe hacer viajes con cajas sueltas.
+    ;; Tras usar el transportador queda un resto que cabe como carga suelta.
+    (trans-en t-pequeno loc-base)
+    (capacidad-trans t-pequeno 5)
+
     (cajas-en loc-almacen medicina 100)
     (cajas-en loc-almacen comida 100)
 
-    (necesidad loc1 medicina 2)
-    (necesidad loc1 comida 1)
-    (total-necesidad loc1 3)
-    (necesidad loc2 medicina 1)
-    (necesidad loc2 comida 1)
-    (total-necesidad loc2 2)
+    (necesidad loc1 medicina 3)
+    (necesidad loc1 comida 3)
+    (total-necesidad loc1 6)
   )
   ((enviar-todo-avanzado))
 )
