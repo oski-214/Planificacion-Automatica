@@ -1,0 +1,10 @@
+
+1 plan(s) were found:
+
+Plan #1:
+Plan cost: 0.0
+
+--------------------
+
+Time Used = 0.005
+
